@@ -62,8 +62,8 @@ else:
 DB_PATH = os.getenv("DB_PATH", "news_bot.db")
 
 # ─────────────────────────────────────────────────────────────
-# Planification — 2 tweets par jour
-# Défaut : 08:30 UTC et 17:30 UTC (configurable via .env)
+# Planification — Breaking News toutes les 2 heures
+# Défaut : toutes les 2 heures (configurable via .env)
 # ─────────────────────────────────────────────────────────────
 DEFAULT_SCHEDULE_TIMES = ["08:30", "17:30"]
 
@@ -74,6 +74,15 @@ if _env_schedule:
     ]
 else:
     SCHEDULE_TIMES = DEFAULT_SCHEDULE_TIMES
+
+# Fréquence de génération des breaking news (en heures)
+# Défaut : 2 heures
+NEWS_INTERVAL_HOURS = int(os.getenv("NEWS_INTERVAL_HOURS", "2"))
+
+# ─────────────────────────────────────────────────────────────
+# Serveur web (Flask)
+# ─────────────────────────────────────────────────────────────
+WEB_PORT = int(os.getenv("WEB_PORT", "5000"))
 
 # ─────────────────────────────────────────────────────────────
 # Publication

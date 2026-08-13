@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Breaking News AI — Veille Technologique</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            padding: 30px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .badge {
+            display: inline-block;
+            background: #ff4757;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+        }
+
+        .controls label {
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+
+        .interval-select {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+
+        .interval-select option {
+            background: #24243e;
+            color: #fff;
+        }
+
+        .news-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .news-card h2 {
+            font-size: 1.6rem;
+            margin-bottom: 15px;
+            color: #fff;
+            line-height: 1.4;
+        }
+
+        .news-meta {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            font-size: 0.85rem;
+            color: #aaa;
+        }
+
+        .news-meta span {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 4px 10px;
+            border-radius: 6px;
+        }
+
+        .breaking-text {
+            background: rgba(0, 210, 255, 0.1);
+            border-left: 4px solid #00d2ff;
+            padding: 15px 20px;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            color: #d0f0ff;
+        }
+
+        .summary {
+            color: #bbb;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .summary strong {
+            color: #00d2ff;
+        }
+
+        .btn {
+            display: inline-block;
+            background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 210, 255, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: none;
+        }
+
+        .btn-tweet {
+            background: linear-gradient(90deg, #1da1f2, #0d8bd9);
+        }
+
+        .btn-tweet:hover {
+            box-shadow: 0 5px 20px rgba(29, 161, 242, 0.3);
+        }
+
+        .btn-twitter {
+            background: linear-gradient(90deg, #1da1f2, #0d8bd9);
+            border: 1px solid rgba(29, 161, 242, 0.5);
+        }
+
+        .btn-twitter:hover {
+            box-shadow: 0 5px 20px rgba(29, 161, 242, 0.3);
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-box {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-box .value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #00d2ff;
+        }
+
+        .stat-box .label {
+            color: #888;
+            font-size: 0.85rem;
+            margin-top: 5px;
+        }
+
+        .history {
+            margin-top: 30px;
+        }
+
+        .history h3 {
+            color: #fff;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .history-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            transition: background 0.2s;
+        }
+
+        .history-item:hover {
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .history-item a {
+            color: #00d2ff;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .history-item a:hover {
+            text-decoration: underline;
+        }
+
+        .history-item .date {
+            color: #666;
+            font-size: 0.8rem;
+            margin-top: 5px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: #888;
+        }
+
+        .empty-state .icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 30px 0;
+            color: #555;
+            font-size: 0.8rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 30px;
+        }
+
+        .loading {
+            display: none;
+            color: #00d2ff;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #2ed573;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            display: none;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+        }
+
+        .toast.error {
+            background: #ff4757;
+        }
+
+        /* ── Propositions secondaires ── */
+        .secondary-proposals {
+            margin-top: 30px;
+        }
+
+        .secondary-proposals h3 {
+            color: #fff;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .proposals-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .proposal-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            transition: background 0.2s, transform 0.2s;
+        }
+
+        .proposal-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .proposal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .proposal-badge {
+            background: rgba(0, 210, 255, 0.2);
+            color: #00d2ff;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-refresh {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #aaa;
+            padding: 5px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .btn-refresh:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+        }
+
+        .proposal-card h4 {
+            color: #fff;
+            font-size: 1rem;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .proposal-meta {
+            color: #888;
+            font-size: 0.8rem;
+            margin-bottom: 10px;
+        }
+
+        .proposal-text {
+            color: #bbb;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin-bottom: 15px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 10px;
+            border-radius: 6px;
+        }
+
+        .proposal-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* ── Simulation visuelle du tweet ── */
+        .tweet-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .tweet-modal.active {
+            display: flex;
+        }
+
+        .tweet-preview {
+            background: #fff;
+            color: #0f1419;
+            border-radius: 16px;
+            max-width: 600px;
+            width: 100%;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .tweet-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .tweet-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1da1f2, #0d8bd9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+            font-weight: bold;
+        }
+
+        .tweet-user {
+            flex: 1;
+        }
+
+        .tweet-user .name {
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        .tweet-user .handle {
+            color: #536471;
+            font-size: 0.9rem;
+        }
+
+        .tweet-body {
+            font-size: 1.1rem;
+            line-height: 1.5;
+            margin-bottom: 15px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .tweet-body a {
+            color: #1da1f2;
+            text-decoration: none;
+        }
+
+        .tweet-body a:hover {
+            text-decoration: underline;
+        }
+
+        .tweet-card-preview {
+            background: #f7f9fa;
+            border: 1px solid #e1e8ed;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .tweet-card-preview .card-title {
+            font-weight: bold;
+            font-size: 0.95rem;
+            margin-bottom: 5px;
+        }
+
+        .tweet-card-preview .card-source {
+            color: #536471;
+            font-size: 0.85rem;
+        }
+
+        .tweet-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #e1e8ed;
+            padding-top: 12px;
+            margin-top: 10px;
+        }
+
+        .tweet-actions {
+            display: flex;
+            gap: 20px;
+            color: #536471;
+            font-size: 0.9rem;
+        }
+
+        .tweet-actions span {
+            cursor: pointer;
+        }
+
+        .tweet-actions span:hover {
+            color: #1da1f2;
+        }
+
+        .tweet-char-count {
+            color: #536471;
+            font-size: 0.85rem;
+        }
+
+        .tweet-char-count.warning {
+            color: #ffad1f;
+        }
+
+        .tweet-char-count.danger {
+            color: #f4212e;
+        }
+
+        .tweet-modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: flex-end;
+        }
+
+        .tweet-modal-actions .btn {
+            padding: 8px 16px;
+            font-size: 0.9rem;
+        }
+
+        .btn-close {
+            background: #e1e8ed;
+            color: #0f1419;
+        }
+
+        .btn-close:hover {
+            background: #d0d9e0;
+            box-shadow: none;
+        }
+
+        .btn-publish {
+            background: #1da1f2;
+        }
+
+        .btn-publish:hover {
+            background: #0d8bd9;
+            box-shadow: 0 5px 20px rgba(29, 161, 242, 0.3);
+        }
+
+        .tweet-status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        .tweet-status.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            display: block;
+        }
+
+        .tweet-status.error {
+            background: #fdecea;
+            color: #c62828;
+            display: block;
+        }
+
+        .tweet-status.dry-run {
+            background: #fff3e0;
+            color: #e65100;
+            display: block;
+        }
+    </style>
+</head>
+<body data-dry-run="{{ 'true' if dry_run else 'false' }}">
+    <div class="container">
+        <header>
+            <div class="badge">🔴 Breaking News</div>
+            <h1>Veille IA & Tech</h1>
+            <p>Actualités générées automatiquement — Dernière mise à jour : {{ now }}</p>
+        </header>
+
+        <!-- Contrôles : fréquence + tweet now + connexion Twitter -->
+        <div class="controls">
+            <label for="interval">🕐 Fréquence de mise à jour :</label>
+            <select id="interval" class="interval-select" onchange="changeInterval(this.value)">
+                {% for interval in available_intervals %}
+                <option value="{{ interval }}" {% if interval == current_interval %}selected{% endif %}>
+                    Toutes les {{ interval }} heures
+                </option>
+                {% endfor %}
+            </select>
+            <button onclick="tweetNow()" class="btn btn-tweet">🐦 Tweet Now</button>
+            <button onclick="connectTwitter()" class="btn btn-twitter" id="twitterBtn">
+                {% if twitter_configured %}
+                    ✅ Twitter connecté
+                {% else %}
+                    🔗 Connecter Twitter
+                {% endif %}
+            </button>
+        </div>
+
+        <div class="stats">
+            <div class="stat-box">
+                <div class="value">{{ stats.count }}</div>
+                <div class="label">Articles traités</div>
+            </div>
+            <div class="stat-box">
+                <div class="value">{{ history|length }}</div>
+                <div class="label">Breaking News affichées</div>
+            </div>
+            <div class="stat-box">
+                <div class="value">{{ current_interval }}h</div>
+                <div class="label">Fréquence actuelle</div>
+            </div>
+        </div>
+
+        {% if latest %}
+        <div class="news-card">
+            <h2>{{ latest.title }}</h2>
+            <div class="news-meta">
+                <span>📰 {{ latest.source }}</span>
+                <span>🕐 {{ latest.published_at_display }}</span>
+            </div>
+            <div class="breaking-text">
+                {{ latest.breaking_text }}
+            </div>
+            {% if latest.summary %}
+            <div class="summary">
+                <strong>📝 Résumé généré :</strong> {{ latest.summary }}
+            </div>
+            {% endif %}
+            <div class="actions">
+                <a href="{{ latest.url }}" target="_blank" class="btn">Lire l'article complet →</a>
+                <button onclick="refreshNews()" class="btn btn-secondary">🔄 Actualiser maintenant</button>
+                <button onclick="tweetNow()" class="btn btn-tweet">🐦 Tweet Now</button>
+            </div>
+            <div class="loading" id="loading">Génération de la nouvelle breaking news en cours…</div>
+        </div>
+
+        <!-- Propositions secondaires rafraîchissables -->
+        {% if latest.secondary_proposals %}
+        <div class="secondary-proposals">
+            <h3>💡 Autres propositions</h3>
+            <div class="proposals-grid">
+                {% for proposal in latest.secondary_proposals %}
+                <div class="proposal-card" id="proposal-{{ loop.index }}">
+                    <div class="proposal-header">
+                        <span class="proposal-badge">Proposition {{ loop.index }}</span>
+                        <button onclick="refreshProposal({{ loop.index }})" class="btn-refresh" title="Rafraîchir">🔄</button>
+                    </div>
+                    <h4>{{ proposal.title }}</h4>
+                    <div class="proposal-meta">
+                        <span>📰 {{ proposal.source }}</span>
+                    </div>
+                    <div class="proposal-text">{{ proposal.breaking_text }}</div>
+                    <div class="proposal-actions">
+                        <a href="{{ proposal.url }}" target="_blank" class="btn btn-small">Lire →</a>
+                        <button onclick="tweetProposal({{ loop.index }})" class="btn btn-small btn-tweet">🐦 Tweeter</button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="news-card empty-state">
+            <div class="icon">📡</div>
+            <h2>Aucune breaking news disponible</h2>
+            <p>La première actualité sera générée automatiquement dans quelques instants.</p>
+            <div class="actions" style="justify-content: center;">
+                <button onclick="refreshNews()" class="btn">🔄 Générer la première news</button>
+            </div>
+            <div class="loading" id="loading">Génération de la breaking news en cours…</div>
+        </div>
+        {% endif %}
+
+        {% if history %}
+        <div class="history">
+            <h3>📜 Historique des breaking news</h3>
+            {% for item in history %}
+            <div class="history-item">
+                <a href="{{ item.url }}" target="_blank">{{ item.title }}</a>
+                <div class="date">{{ item.published_at_display }} — {{ item.source }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <footer>
+            <p>🤖 Agent de veille automatique — Scraping RSS + Génération IA</p>
+            <p>Sources : Presse-Citron, Clubic, 01net, Frandroid, TechCrunch, MarkTechPost, VentureBeat, The Verge</p>
+        </footer>
+    </div>
+
+    <!-- Modal de simulation du tweet -->
+    <div class="tweet-modal" id="tweetModal">
+        <div class="tweet-preview">
+            <div class="tweet-header">
+                <div class="tweet-avatar">🤖</div>
+                <div class="tweet-user">
+                    <div class="name">Veille IA & Tech</div>
+                    <div class="handle">@VeilleIA_Tech</div>
+                </div>
+            </div>
+            <div class="tweet-body" id="tweetBody"></div>
+            <div class="tweet-card-preview" id="tweetCard">
+                <div class="card-title" id="tweetCardTitle"></div>
+                <div class="card-source" id="tweetCardSource"></div>
+            </div>
+            <div class="tweet-footer">
+                <div class="tweet-actions">
+                    <span>💬</span>
+                    <span>🔁</span>
+                    <span>❤️</span>
+                    <span>🔗</span>
+                </div>
+                <div class="tweet-char-count" id="tweetCharCount"></div>
+            </div>
+            <div class="tweet-status" id="tweetStatus"></div>
+            <div class="tweet-modal-actions">
+                <button onclick="closeTweetModal()" class="btn btn-close">Annuler</button>
+                <button onclick="publishTweet()" class="btn btn-publish" id="publishBtn">Publier le tweet</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const DRY_RUN = document.body.dataset.dryRun === 'true';
+        let currentTweetData = null;
+
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast' + (isError ? ' error' : '');
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 4000);
+        }
+
+        async function refreshNews() {
+            const loading = document.getElementById('loading');
+            loading.style.display = 'block';
+
+            try {
+                const response = await fetch('/api/refresh');
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erreur lors de la génération');
+                }
+
+                showToast('✅ Nouvelle breaking news générée !');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } catch (error) {
+                showToast('❌ ' + error.message, true);
+                loading.style.display = 'none';
+            }
+        }
+
+        async function changeInterval(interval) {
+            try {
+                const response = await fetch('/api/interval', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ interval: parseInt(interval) })
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erreur lors du changement de fréquence');
+                }
+
+                showToast('✅ Fréquence mise à jour : toutes les ' + interval + ' heures');
+            } catch (error) {
+                showToast('❌ ' + error.message, true);
+            }
+        }
+
+        async function connectTwitter() {
+            const btn = document.getElementById('twitterBtn');
+
+            // Ouvre la page Twitter dans un nouvel onglet
+            window.open('https://twitter.com', '_blank');
+
+            // Vérifie la connexion en arrière-plan
+            btn.disabled = true;
+            btn.textContent = '⏳ Vérification…';
+
+            try {
+                const response = await fetch('/api/twitter/connect', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erreur lors de la connexion');
+                }
+
+                btn.textContent = '✅ Twitter connecté';
+                showToast('✅ ' + data.message);
+            } catch (error) {
+                btn.textContent = '🔗 Connecter Twitter';
+                showToast('❌ ' + error.message, true);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function refreshProposal(index) {
+            const card = document.getElementById('proposal-' + index);
+            if (!card) return;
+
+            card.style.opacity = '0.5';
+            try {
+                const response = await fetch('/api/refresh');
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erreur lors du rafraîchissement');
+                }
+
+                // Met à jour la proposition avec la nouvelle news
+                if (data.secondary_proposals && data.secondary_proposals[index - 1]) {
+                    const proposal = data.secondary_proposals[index - 1];
+                    card.querySelector('h4').textContent = proposal.title;
+                    card.querySelector('.proposal-meta span').textContent = '📰 ' + proposal.source;
+                    card.querySelector('.proposal-text').textContent = proposal.breaking_text;
+                    card.querySelector('.proposal-actions a').href = proposal.url;
+                    showToast('✅ Proposition ' + index + ' rafraîchie !');
+                } else {
+                    throw new Error('Aucune nouvelle proposition disponible');
+                }
+            } catch (error) {
+                showToast('❌ ' + error.message, true);
+            } finally {
+                card.style.opacity = '1';
+            }
+        }
+
+        async function tweetProposal(index) {
+            // Utilise la proposition secondaire pour le tweet
+            const card = document.getElementById('proposal-' + index);
+            if (!card) return;
+
+            const title = card.querySelector('h4').textContent;
+            const text = card.querySelector('.proposal-text').textContent;
+            const url = card.querySelector('.proposal-actions a').href;
+
+            // Affiche la simulation du tweet
+            currentTweetData = {
+                tweet_preview: {
+                    text: text,
+                    title: title,
+                    url: url,
+                    source: card.querySelector('.proposal-meta span').textContent.replace('📰 ', ''),
+                    published_at: new Date().toISOString(),
+                    character_count: text.length
+                },
+                dry_run: DRY_RUN
+            };
+            showTweetPreview(currentTweetData.tweet_preview);
+        }
+
+        async function tweetNow() {
+            const loading = document.getElementById('loading');
+            if (loading) loading.style.display = 'block';
+
+            try {
+                const response = await fetch('/api/tweet-now', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erreur lors de la génération du tweet');
+                }
+
+                // Afficher la simulation visuelle du tweet
+                currentTweetData = data;
+                showTweetPreview(data.tweet_preview);
+            } catch (error) {
+                showToast('❌ ' + error.message, true);
+            } finally {
+                if (loading) loading.style.display = 'none';
+            }
+        }
+
+        function showTweetPreview(preview) {
+            const modal = document.getElementById('tweetModal');
+            const body = document.getElementById('tweetBody');
+            const cardTitle = document.getElementById('tweetCardTitle');
+            const cardSource = document.getElementById('tweetCardSource');
+            const charCount = document.getElementById('tweetCharCount');
+            const status = document.getElementById('tweetStatus');
+            const publishBtn = document.getElementById('publishBtn');
+
+            // Remplacer les URLs par des liens cliquables
+            let text = preview.text;
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            text = text.replace(urlRegex, '<a href="$1" target="_blank">$1</a>');
+
+            body.innerHTML = text;
+            cardTitle.textContent = preview.title;
+            cardSource.textContent = preview.source + ' · ' + new Date(preview.published_at).toLocaleString('fr-FR');
+
+            // Compteur de caractères
+            const count = preview.character_count;
+            charCount.textContent = count + ' caractères';
+            charCount.className = 'tweet-char-count';
+            if (count > 240) {
+                charCount.classList.add('warning');
+            }
+            if (count > 270) {
+                charCount.classList.add('danger');
+            }
+
+            // Statut de publication
+            status.className = 'tweet-status';
+            status.style.display = 'none';
+            if (currentTweetData.dry_run) {
+                status.textContent = '🧪 Mode DRY-RUN : le tweet ne sera PAS publié réellement sur Twitter.';
+                status.className = 'tweet-status dry-run';
+                status.style.display = 'block';
+                publishBtn.textContent = 'Simuler la publication';
+            } else {
+                publishBtn.textContent = 'Publier le tweet';
+            }
+
+            modal.classList.add('active');
+        }
+
+        function closeTweetModal() {
+            document.getElementById('tweetModal').classList.remove('active');
+            currentTweetData = null;
+        }
+
+        async function publishTweet() {
+            if (!currentTweetData) return;
+
+            const status = document.getElementById('tweetStatus');
+            const publishBtn = document.getElementById('publishBtn');
+            publishBtn.disabled = true;
+            publishBtn.textContent = 'Publication en cours…';
+
+            try {
+                // Si dry-run, on simule juste la publication
+                if (currentTweetData.dry_run) {
+                    setTimeout(() => {
+                        status.textContent = '✅ Tweet simulé avec succès (mode DRY-RUN) — aucun tweet réel envoyé.';
+                        status.className = 'tweet-status success';
+                        status.style.display = 'block';
+                        publishBtn.disabled = false;
+                        publishBtn.textContent = 'Simuler la publication';
+                        showToast('✅ Tweet simulé (DRY-RUN)');
+                    }, 1500);
+                    return;
+                }
+
+                // Publication réelle via l'API
+                const response = await fetch('/api/tweet-now', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erreur lors de la publication');
+                }
+
+                if (data.published) {
+                    status.textContent = '✅ Tweet publié avec succès sur Twitter !';
+                    status.className = 'tweet-status success';
+                    status.style.display = 'block';
+                    showToast('✅ Tweet publié sur Twitter !');
+                } else {
+                    status.textContent = '⚠️ Le tweet a été généré mais la publication a échoué.';
+                    status.className = 'tweet-status error';
+                    status.style.display = 'block';
+                    showToast('❌ Échec de la publication', true);
+                }
+            } catch (error) {
+                status.textContent = '❌ ' + error.message;
+                status.className = 'tweet-status error';
+                status.style.display = 'block';
+                showToast('❌ ' + error.message, true);
+            } finally {
+                publishBtn.disabled = false;
+                publishBtn.textContent = 'Publier le tweet';
+            }
+        }
+
+        // Fermer le modal en cliquant en dehors
+        document.getElementById('tweetModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeTweetModal();
+            }
+        });
+
+        // Auto-refresh toutes les 2 minutes pour vérifier les nouvelles news
+        setInterval(() => {
+            fetch('/api/latest')
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.id) {
+                        const currentTitle = document.querySelector('.news-card h2');
+                        if (currentTitle && currentTitle.textContent !== data.title) {
+                            window.location.reload();
+                        }
+                    }
+                })
+                .catch(() => {});
+        }, 120000);
+    </script>
+</body>
+</html>

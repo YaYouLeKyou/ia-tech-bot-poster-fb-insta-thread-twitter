@@ -8,6 +8,7 @@ de republier la même actualité sur Twitter/X.
 import sqlite3
 import logging
 from datetime import datetime, timezone
+from typing import Optional
 
 import config
 
@@ -28,6 +29,20 @@ CREATE TABLE IF NOT EXISTS processed_articles (
 );
 """
 
+CREATE_BREAKING_NEWS_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS breaking_news (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    url TEXT NOT NULL,
+    source TEXT,
+    summary TEXT,
+    breaking_text TEXT,
+    secondary_proposals TEXT,
+    published_at TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+"""
+
 
 def get_connection() -> sqlite3.Connection:
     """Retourne une connexion SQLite (avec vérification des clés étrangères)."""
@@ -38,10 +53,11 @@ def get_connection() -> sqlite3.Connection:
 
 
 def init_db() -> None:
-    """Initialise la base de données et crée la table si nécessaire."""
+    """Initialise la base de données et crée les tables si nécessaire."""
     conn = get_connection()
     try:
         conn.execute(CREATE_TABLE_SQL)
+        conn.execute(CREATE_BREAKING_NEWS_TABLE_SQL)
         conn.commit()
         logger.info("Base de données initialisée : %s", config.DB_PATH)
     finally:
@@ -117,5 +133,106 @@ def get_statistics() -> dict:
             "count": row["count"] if row else 0,
             "last_processed_at": row["last"] if row else None,
         }
+    finally:
+        conn.close()
+
+
+# ─────────────────────────────────────────────────────────────
+# Breaking News — stockage et lecture
+# ─────────────────────────────────────────────────────────────
+def save_breaking_news(news: dict) -> None:
+    """
+    Enregistre une breaking news dans la base.
+
+    :param news: dict avec title, url, source, summary, breaking_text, published_at, secondary_proposals
+    """
+    import json
+
+    conn = get_connection()
+    try:
+        secondary = json.dumps(news.get("secondary_proposals", []), ensure_ascii=False)
+        conn.execute(
+            """
+            INSERT INTO breaking_news
+                (title, url, source, summary, breaking_text, secondary_proposals, published_at, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                news.get("title", ""),
+                news.get("url", ""),
+                news.get("source", ""),
+                news.get("summary", ""),
+                news.get("breaking_text", ""),
+                secondary,
+                news.get("published_at", datetime.now(timezone.utc).isoformat()),
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+        conn.commit()
+        logger.info("Breaking news enregistrée : %s", news.get("title", "")[:60])
+    except sqlite3.IntegrityError as exc:
+        logger.warning("Erreur d'enregistrement breaking news : %s", exc)
+    finally:
+        conn.close()
+
+
+def get_latest_breaking_news() -> Optional[dict]:
+    """
+    Retourne la dernière breaking news stockée.
+
+    :return: dict ou None si aucune news
+    """
+    import json
+
+    conn = get_connection()
+    try:
+        cursor = conn.execute(
+            "SELECT * FROM breaking_news ORDER BY id DESC LIMIT 1"
+        )
+        row = cursor.fetchone()
+        if not row:
+            return None
+        result = dict(row)
+        # Désérialise les propositions secondaires
+        if result.get("secondary_proposals"):
+            try:
+                result["secondary_proposals"] = json.loads(result["secondary_proposals"])
+            except (json.JSONDecodeError, TypeError):
+                result["secondary_proposals"] = []
+        else:
+            result["secondary_proposals"] = []
+        return result
+    finally:
+        conn.close()
+
+
+def get_breaking_news_history(limit: int = 50) -> list:
+    """
+    Retourne l'historique des breaking news (plus récentes d'abord).
+
+    :param limit: Nombre maximum de news à retourner
+    :return: Liste de dicts
+    """
+    import json
+
+    conn = get_connection()
+    try:
+        cursor = conn.execute(
+            "SELECT * FROM breaking_news ORDER BY id DESC LIMIT ?",
+            (limit,),
+        )
+        rows = cursor.fetchall()
+        result = []
+        for row in rows:
+            item = dict(row)
+            if item.get("secondary_proposals"):
+                try:
+                    item["secondary_proposals"] = json.loads(item["secondary_proposals"])
+                except (json.JSONDecodeError, TypeError):
+                    item["secondary_proposals"] = []
+            else:
+                item["secondary_proposals"] = []
+            result.append(item)
+        return result
     finally:
         conn.close()
