@@ -5,6 +5,9 @@ Responsabilités :
   - Authentification OAuth 1.0a (clés API + tokens d'accès)
   - Publication d'un tweet
   - Vérification de la configuration
+  - Mode gratuit automatique : si les crédits sont épuisés (402),
+    bascule en simulation sans erreur, et reprend la publication
+    réelle automatiquement quand les crédits sont rechargés.
 """
 
 import logging
@@ -23,6 +26,8 @@ class TwitterClient:
     def __init__(self) -> None:
         self.client: Optional[tweepy.Client] = None
         self._is_configured = False
+        # Mode gratuit : True si les crédits sont épuisés (402)
+        self._credits_depleted = False
 
     def configure(self) -> bool:
         """
@@ -84,6 +89,18 @@ class TwitterClient:
             logger.info("Dry-run : tweet affiché dans la console (%d caractères)", len(text))
             return True
 
+        # ── Mode gratuit automatique : crédits épuisés ──
+        if self._credits_depleted:
+            print("\n" + "=" * 60)
+            print("🆓 MODE GRATUIT — CRÉDITS TWITTER ÉPUISÉS")
+            print("Le tweet est simulé. Il sera publié automatiquement")
+            print("dès que vos crédits seront rechargés.")
+            print("=" * 60)
+            print(text)
+            print("=" * 60 + "\n")
+            logger.info("Mode gratuit : tweet simulé (crédits épuisés)")
+            return True
+
         if not self._is_configured or self.client is None:
             logger.error("Client Twitter non configuré — appelez configure() d'abord")
             return False
@@ -100,9 +117,32 @@ class TwitterClient:
             return False
 
         except tweepy.TweepyException as exc:
+            # Détecte l'erreur 402 (crédits épuisés) et bascule en mode gratuit
+            error_str = str(exc)
+            if "402" in error_str or "credits depleted" in error_str.lower():
+                self._credits_depleted = True
+                logger.warning(
+                    "⚠️  Crédits Twitter épuisés (402) — bascule en mode gratuit. "
+                    "Le tweet sera simulé jusqu'au rechargement des crédits."
+                )
+                # Simule le tweet en mode gratuit
+                print("\n" + "=" * 60)
+                print("🆓 MODE GRATUIT — CRÉDITS TWITTER ÉPUISÉS")
+                print("Le tweet est simulé. Il sera publié automatiquement")
+                print("dès que vos crédits seront rechargés.")
+                print("=" * 60)
+                print(text)
+                print("=" * 60 + "\n")
+                return True
+
             logger.error("Erreur Twitter API : %s", exc)
             return False
 
         except Exception as exc:  # noqa: BLE001
             logger.error("Erreur inattendue lors de la publication : %s", exc)
             return False
+
+    def reset_credits_status(self) -> None:
+        """Réinitialise le statut des crédits (appelé quand les crédits sont rechargés)."""
+        self._credits_depleted = False
+        logger.info("Statut des crédits Twitter réinitialisé — publication réelle active")

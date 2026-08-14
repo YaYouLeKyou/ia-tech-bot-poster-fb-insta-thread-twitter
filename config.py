@@ -31,6 +31,13 @@ LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.deepseek.com")
 LLM_MODEL = os.getenv("LLM_MODEL", "deepseek-chat")
 
 # ─────────────────────────────────────────────────────────────
+# API Facebook (Meta Graph API)
+# ─────────────────────────────────────────────────────────────
+META_ACCESS_TOKEN = os.getenv("META_ACCESS_TOKEN", "")
+FACEBOOK_PAGE_ID = os.getenv("FACEBOOK_PAGE_ID", "")
+INSTAGRAM_ACCOUNT_ID = os.getenv("INSTAGRAM_ACCOUNT_ID", "")
+
+# ─────────────────────────────────────────────────────────────
 # Flux RSS spécialisés « IA & Tech »
 # Français puis Anglais — fiables et actifs
 # ─────────────────────────────────────────────────────────────

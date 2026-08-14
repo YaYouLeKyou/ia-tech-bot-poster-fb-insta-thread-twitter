@@ -28,20 +28,34 @@ services:
       - key: TWITTER_BEARER_TOKEN
         sync: false
 
-      # ── Clé API LLM (DeepSeek / OpenAI) ────────────────────
+      # ── Clé API LLM (DeepSeek / OpenAI / Groq) ─────────────
       - key: LLM_API_KEY
         sync: false
       - key: LLM_BASE_URL
-        value: https://api.deepseek.com
+        value: https://api.groq.com/openai/v1
       - key: LLM_MODEL
-        value: deepseek-chat
+        value: llama-3.1-8b-instant
 
       # ── Planification (optionnel) ──────────────────────────
       # Défaut : 08:30 et 17:30 UTC (2 tweets/jour)
       - key: SCHEDULE_TIMES
         value: "08:30,17:30"
 
+      # ── Fréquence alternative (si SCHEDULE_TIMES est vide) ─
+      - key: NEWS_INTERVAL_HOURS
+        value: "2"
+
+      # ── Port du serveur web ────────────────────────────────
+      - key: WEB_PORT
+        value: "5000"
+
       # ── Mode test au démarrage ─────────────────────────────
       # true = publie un tweet immédiatement au lancement
       - key: TEST_ON_STARTUP
+        value: "false"
+
+      # ── Mode simulation (Dry-Run) ──────────────────────────
+      # true  = affiche le tweet dans la console, ne publie PAS sur Twitter
+      # false = publie réellement sur Twitter (comportement normal)
+      - key: DRY_RUN
         value: "false"

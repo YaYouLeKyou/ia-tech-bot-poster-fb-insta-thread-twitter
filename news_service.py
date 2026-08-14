@@ -29,11 +29,11 @@ def generate_breaking_news() -> Optional[dict]:
     """
     logger.info("=== Génération d'une breaking news AI ===")
 
-    # 1. Récupération des articles RSS
-    articles = rss_parser.fetch_articles(max_items=config.MAX_ARTICLES_TO_PROCESS)
+    # 1. Récupération des nouveaux articles RSS (non encore traités)
+    articles = rss_parser.fetch_new_articles(max_items=config.MAX_ARTICLES_TO_PROCESS)
 
     if not articles:
-        logger.warning("Aucun article récupéré depuis les flux RSS.")
+        logger.warning("Aucun nouvel article récupéré depuis les flux RSS.")
         return None
 
     # 2. Sélection des 3 meilleurs articles (les plus récents)
@@ -56,6 +56,13 @@ def generate_breaking_news() -> Optional[dict]:
 
         if not breaking_text:
             logger.warning("Échec de la génération IA pour la proposition %d", i + 1)
+            # Marque l'article comme traité pour ne pas bloquer indéfiniment
+            database.mark_article_processed(
+                url=article.url,
+                title=article.title,
+                source=article.source,
+                tweet_text="",
+            )
             continue
 
         proposals.append({
@@ -84,6 +91,15 @@ def generate_breaking_news() -> Optional[dict]:
 
     # 5. Stockage en base
     database.save_breaking_news(news)
+
+    # 6. Marque tous les articles traités comme "déjà publiés" (anti-doublons)
+    for proposal in proposals:
+        database.mark_article_processed(
+            url=proposal["url"],
+            title=proposal["title"],
+            source=proposal["source"],
+            tweet_text=proposal["breaking_text"],
+        )
 
     logger.info(
         "Breaking news générée et stockée : %s (+ %d propositions secondaires)",

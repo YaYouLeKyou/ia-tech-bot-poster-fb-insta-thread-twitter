@@ -59,6 +59,66 @@
             animation: pulse 2s infinite;
         }
 
+        .status-badges {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+
+        .status-badge.dry-run {
+            background: rgba(255, 173, 31, 0.15);
+            border: 1px solid rgba(255, 173, 31, 0.4);
+            color: #ffad1f;
+        }
+
+        .status-badge.live {
+            background: rgba(46, 213, 115, 0.15);
+            border: 1px solid rgba(46, 213, 115, 0.4);
+            color: #2ed573;
+        }
+
+        .status-badge.twitter {
+            background: rgba(29, 161, 242, 0.15);
+            border: 1px solid rgba(29, 161, 242, 0.4);
+            color: #1da1f2;
+        }
+
+        .status-badge.twitter-off {
+            background: rgba(255, 71, 87, 0.15);
+            border: 1px solid rgba(255, 71, 87, 0.4);
+            color: #ff4757;
+        }
+
+        .status-badge.schedule {
+            background: rgba(0, 210, 255, 0.15);
+            border: 1px solid rgba(0, 210, 255, 0.4);
+            color: #00d2ff;
+        }
+
+        .status-badge.facebook {
+            background: rgba(66, 103, 178, 0.15);
+            border: 1px solid rgba(66, 103, 178, 0.4);
+            color: #4267b2;
+        }
+
+        .status-badge.facebook-off {
+            background: rgba(255, 71, 87, 0.15);
+            border: 1px solid rgba(255, 71, 87, 0.4);
+            color: #ff4757;
+        }
+
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.7; }
@@ -70,7 +130,7 @@
             align-items: center;
             gap: 20px;
             flex-wrap: wrap;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             padding: 20px;
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -80,6 +140,23 @@
         .controls label {
             color: #aaa;
             font-size: 0.9rem;
+        }
+
+        .controls-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .controls-group-title {
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .interval-select {
@@ -95,6 +172,68 @@
         .interval-select option {
             background: #24243e;
             color: #fff;
+        }
+
+        .time-input {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            color-scheme: dark;
+        }
+
+        .time-input::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+        }
+
+        .network-check {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s;
+            color: #ddd;
+            font-size: 0.9rem;
+            user-select: none;
+        }
+
+        .network-check:hover {
+            background: rgba(255, 255, 255, 0.14);
+        }
+
+        .network-check input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #00d2ff;
+            cursor: pointer;
+        }
+
+        .network-check.twitter-check {
+            border-color: rgba(29, 161, 242, 0.4);
+        }
+
+        .network-check.facebook-check {
+            border-color: rgba(66, 103, 178, 0.4);
+        }
+
+        .network-check.checked {
+            background: rgba(0, 210, 255, 0.12);
+            border-color: rgba(0, 210, 255, 0.5);
+        }
+
+        .schedule-hint {
+            color: #777;
+            font-size: 0.8rem;
+            width: 100%;
+            text-align: center;
         }
 
         .news-card {
@@ -198,6 +337,15 @@
 
         .btn-twitter:hover {
             box-shadow: 0 5px 20px rgba(29, 161, 242, 0.3);
+        }
+
+        .btn-facebook {
+            background: linear-gradient(90deg, #4267b2, #365899);
+            border: 1px solid rgba(66, 103, 178, 0.5);
+        }
+
+        .btn-facebook:hover {
+            box-shadow: 0 5px 20px rgba(66, 103, 178, 0.3);
         }
 
         .btn-small {
@@ -614,26 +762,82 @@
             <div class="badge">🔴 Breaking News</div>
             <h1>Veille IA & Tech</h1>
             <p>Actualités générées automatiquement — Dernière mise à jour : {{ now }}</p>
+            <div class="status-badges">
+                {% if dry_run %}
+                <span class="status-badge dry-run">🧪 Mode DRY-RUN</span>
+                {% else %}
+                <span class="status-badge live">🐦 Publication réelle</span>
+                {% endif %}
+                {% if twitter_configured %}
+                <span class="status-badge twitter">✅ Twitter connecté</span>
+                {% else %}
+                <span class="status-badge twitter-off">❌ Twitter non configuré</span>
+                {% endif %}
+                {% if facebook_configured %}
+                <span class="status-badge facebook">✅ Facebook connecté</span>
+                {% else %}
+                <span class="status-badge facebook-off">❌ Facebook non configuré</span>
+                {% endif %}
+                <span class="status-badge schedule">🕐 Publication : {{ schedule_times|join(' & ') }} UTC</span>
+            </div>
         </header>
 
-        <!-- Contrôles : fréquence + tweet now + connexion Twitter -->
-        <div class="controls">
-            <label for="interval">🕐 Fréquence de mise à jour :</label>
-            <select id="interval" class="interval-select" onchange="changeInterval(this.value)">
-                {% for interval in available_intervals %}
-                <option value="{{ interval }}" {% if interval == current_interval %}selected{% endif %}>
-                    Toutes les {{ interval }} heures
-                </option>
-                {% endfor %}
-            </select>
-            <button onclick="tweetNow()" class="btn btn-tweet">🐦 Tweet Now</button>
-            <button onclick="connectTwitter()" class="btn btn-twitter" id="twitterBtn">
-                {% if twitter_configured %}
-                    ✅ Twitter connecté
-                {% else %}
-                    🔗 Connecter Twitter
-                {% endif %}
-            </button>
+        <!-- Contrôles : planification + post minute + connexions -->
+        <div class="controls-group">
+
+            <!-- Planification des heures de publication -->
+            <div class="controls">
+                <div class="controls-group-title">🕐 Heures de publication (UTC)</div>
+                <label for="scheduleTime1">Publication 1 :</label>
+                <input type="time" id="scheduleTime1" class="time-input" value="{{ schedule_times[0] if schedule_times|length > 0 else '08:30' }}">
+                <label for="scheduleTime2">Publication 2 :</label>
+                <input type="time" id="scheduleTime2" class="time-input" value="{{ schedule_times[1] if schedule_times|length > 1 else '17:30' }}">
+                <button onclick="saveSchedule()" class="btn btn-secondary">💾 Enregistrer les heures</button>
+                <div class="schedule-hint">Les publications automatiques auront lieu à ces heures (format UTC).</div>
+            </div>
+
+            <!-- Post minute : publication immédiate sur le(s) réseau(x) choisi(s) -->
+            <div class="controls">
+                <div class="controls-group-title">⚡ Post minute</div>
+                <label>Envoyer sur :</label>
+                <label class="network-check twitter-check" id="netTwitterLabel">
+                    <input type="checkbox" id="netTwitter" checked onchange="updateNetworkCheck(this, 'netTwitterLabel')">
+                    🐦 Twitter
+                </label>
+                <label class="network-check facebook-check" id="netFacebookLabel">
+                    <input type="checkbox" id="netFacebook" checked onchange="updateNetworkCheck(this, 'netFacebookLabel')">
+                    📘 Facebook
+                </label>
+                <button onclick="postNow()" class="btn btn-tweet">⚡ Publier maintenant</button>
+                <div class="schedule-hint">Génère une nouvelle breaking news et la publie immédiatement sur le(s) réseau(x) sélectionné(s).</div>
+            </div>
+
+            <!-- Connexions aux réseaux -->
+            <div class="controls">
+                <div class="controls-group-title">🔗 Connexions</div>
+                <label for="interval">🕐 Fréquence de mise à jour :</label>
+                <select id="interval" class="interval-select" onchange="changeInterval(this.value)">
+                    {% for interval in available_intervals %}
+                    <option value="{{ interval }}" {% if interval == current_interval %}selected{% endif %}>
+                        Toutes les {{ interval }} heures
+                    </option>
+                    {% endfor %}
+                </select>
+                <button onclick="connectTwitter()" class="btn btn-twitter" id="twitterBtn">
+                    {% if twitter_configured %}
+                        ✅ Twitter connecté
+                    {% else %}
+                        🔗 Connecter Twitter
+                    {% endif %}
+                </button>
+                <button onclick="connectFacebook()" class="btn btn-facebook" id="facebookBtn">
+                    {% if facebook_configured %}
+                        ✅ Facebook connecté
+                    {% else %}
+                        🔗 Connecter Facebook
+                    {% endif %}
+                </button>
+            </div>
         </div>
 
         <div class="stats">
@@ -818,6 +1022,87 @@
             }
         }
 
+        // Met à jour le style visuel des cases à cocher réseau
+        function updateNetworkCheck(checkbox, labelId) {
+            const label = document.getElementById(labelId);
+            if (label) {
+                label.classList.toggle('checked', checkbox.checked);
+            }
+        }
+
+        // Enregistre les heures de publication planifiées
+        async function saveSchedule() {
+            const t1 = document.getElementById('scheduleTime1').value;
+            const t2 = document.getElementById('scheduleTime2').value;
+            const times = [t1, t2].filter(t => t && t.length > 0);
+
+            if (times.length === 0) {
+                showToast('❌ Sélectionnez au moins une heure de publication', true);
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/schedule', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ times: times })
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erreur lors de l\'enregistrement des heures');
+                }
+
+                showToast('✅ Heures de publication enregistrées : ' + data.times.join(' & ') + ' UTC');
+            } catch (error) {
+                showToast('❌ ' + error.message, true);
+            }
+        }
+
+        // Récupère le réseau sélectionné (twitter, facebook ou both)
+        function getSelectedNetwork() {
+            const twitter = document.getElementById('netTwitter').checked;
+            const facebook = document.getElementById('netFacebook').checked;
+
+            if (twitter && facebook) return 'both';
+            if (twitter) return 'twitter';
+            if (facebook) return 'facebook';
+            return null;
+        }
+
+        // Post minute : publie immédiatement sur le(s) réseau(x) choisi(s)
+        async function postNow() {
+            const network = getSelectedNetwork();
+            if (!network) {
+                showToast('❌ Sélectionnez au moins un réseau (Twitter ou Facebook)', true);
+                return;
+            }
+
+            const loading = document.getElementById('loading');
+            if (loading) loading.style.display = 'block';
+
+            try {
+                const response = await fetch('/api/tweet-now', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ network: network })
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erreur lors de la publication');
+                }
+
+                // Afficher la simulation visuelle
+                currentTweetData = data;
+                showTweetPreview(data.tweet_preview);
+            } catch (error) {
+                showToast('❌ ' + error.message, true);
+            } finally {
+                if (loading) loading.style.display = 'none';
+            }
+        }
+
         async function connectTwitter() {
             const btn = document.getElementById('twitterBtn');
 
@@ -842,6 +1127,43 @@
                 showToast('✅ ' + data.message);
             } catch (error) {
                 btn.textContent = '🔗 Connecter Twitter';
+                showToast('❌ ' + error.message, true);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function connectFacebook() {
+            const btn = document.getElementById('facebookBtn');
+
+            // Ouvre la page Facebook dans un nouvel onglet
+            window.open('https://www.facebook.com', '_blank');
+
+            // Vérifie la connexion en arrière-plan
+            btn.disabled = true;
+            btn.textContent = '⏳ Vérification…';
+
+            try {
+                const response = await fetch('/api/facebook/connect', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erreur lors de la connexion');
+                }
+
+                let message = data.message;
+                if (data.page_name) {
+                    message += ' — Page : ' + data.page_name;
+                    if (data.page_fans) {
+                        message += ' (' + data.page_fans + ' fans)';
+                    }
+                }
+                btn.textContent = '✅ Facebook connecté';
+                showToast('✅ ' + message);
+            } catch (error) {
+                btn.textContent = '🔗 Connecter Facebook';
                 showToast('❌ ' + error.message, true);
             } finally {
                 btn.disabled = false;
@@ -998,9 +1320,12 @@
                     return;
                 }
 
-                // Publication réelle via l'API
+                // Publication réelle via l'API (avec le réseau sélectionné)
+                const network = currentTweetData.network || 'both';
                 const response = await fetch('/api/tweet-now', {
-                    method: 'POST'
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ network: network })
                 });
                 const data = await response.json();
 
@@ -1008,13 +1333,25 @@
                     throw new Error(data.error || 'Erreur lors de la publication');
                 }
 
-                if (data.published) {
-                    status.textContent = '✅ Tweet publié avec succès sur Twitter !';
+                // Construit le message de statut selon les réseaux
+                const parts = [];
+                if (network === 'twitter' || network === 'both') {
+                    parts.push(data.published ? '🐦 Twitter ✅' : '🐦 Twitter ❌');
+                }
+                if (network === 'facebook' || network === 'both') {
+                    parts.push(data.facebook_published ? '📘 Facebook ✅' : '📘 Facebook ❌');
+                }
+
+                const anySuccess = (network !== 'twitter' || data.published) &&
+                                   (network !== 'facebook' || data.facebook_published);
+
+                if (anySuccess) {
+                    status.textContent = '✅ Publication réussie : ' + parts.join(' · ');
                     status.className = 'tweet-status success';
                     status.style.display = 'block';
-                    showToast('✅ Tweet publié sur Twitter !');
+                    showToast('✅ ' + parts.join(' · '));
                 } else {
-                    status.textContent = '⚠️ Le tweet a été généré mais la publication a échoué.';
+                    status.textContent = '⚠️ Publication échouée : ' + parts.join(' · ');
                     status.className = 'tweet-status error';
                     status.style.display = 'block';
                     showToast('❌ Échec de la publication', true);
