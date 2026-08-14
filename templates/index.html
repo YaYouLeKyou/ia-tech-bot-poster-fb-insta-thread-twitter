@@ -837,6 +837,7 @@
                         🔗 Connecter Facebook
                     {% endif %}
                 </button>
+                <button onclick="diagnosticFacebook()" class="btn btn-secondary" id="facebookDiagBtn">🔍 Diagnostic Facebook</button>
             </div>
         </div>
 
@@ -1136,9 +1137,6 @@
         async function connectFacebook() {
             const btn = document.getElementById('facebookBtn');
 
-            // Ouvre la page Facebook dans un nouvel onglet
-            window.open('https://www.facebook.com', '_blank');
-
             // Vérifie la connexion en arrière-plan
             btn.disabled = true;
             btn.textContent = '⏳ Vérification…';
@@ -1167,6 +1165,53 @@
                 showToast('❌ ' + error.message, true);
             } finally {
                 btn.disabled = false;
+            }
+        }
+
+        // Diagnostic complet du token Facebook (validité + permissions)
+        async function diagnosticFacebook() {
+            const btn = document.getElementById('facebookDiagBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Diagnostic…';
+
+            try {
+                const response = await fetch('/api/facebook/diagnostic');
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erreur lors du diagnostic');
+                }
+
+                const info = data.token_info;
+                const lines = [];
+
+                if (!info.is_valid) {
+                    lines.push('❌ Token INVALIDE / expiré');
+                    if (info.error_message) {
+                        lines.push('Erreur : ' + info.error_message);
+                    }
+                    lines.push('→ Générez un nouveau token : https://developers.facebook.com/tools/access-token/');
+                } else {
+                    lines.push('✅ Token VALIDE');
+                    if (info.type) lines.push('Type : ' + info.type);
+                    if (info.expires_at) {
+                        const expDate = new Date(info.expires_at * 1000);
+                        lines.push('Expiration : ' + expDate.toLocaleDateString('fr-FR'));
+                    }
+                    if (info.missing_scopes && info.missing_scopes.length > 0) {
+                        lines.push('❌ Permissions manquantes : ' + info.missing_scopes.join(', '));
+                        lines.push('→ Requises : pages_read_engagement, pages_manage_posts');
+                    } else {
+                        lines.push('✅ Permissions OK');
+                    }
+                }
+
+                showToast(lines.join('\n'), !info.is_valid);
+            } catch (error) {
+                showToast('❌ ' + error.message, true);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔍 Diagnostic Facebook';
             }
         }
 

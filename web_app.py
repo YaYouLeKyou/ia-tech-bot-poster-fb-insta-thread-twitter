@@ -298,7 +298,7 @@ def api_facebook_connect():
 
     try:
         facebook = facebook_client.FacebookClient()
-        if facebook.configure():
+        if facebook.configure(verify_token=True):
             page_info = facebook.get_page_info()
             return jsonify({
                 "success": True,
@@ -309,7 +309,10 @@ def api_facebook_connect():
             })
         return jsonify({
             "success": False,
-            "error": "Échec de la configuration Facebook. Vérifiez vos clés API.",
+            "error": "Token Facebook invalide ou expiré (code 190/467). "
+                     "Générez un nouveau Page Access Token sur "
+                     "https://developers.facebook.com/tools/access-token/ "
+                     "avec les permissions pages_read_engagement et pages_manage_posts.",
         }), 400
     except Exception as exc:  # noqa: BLE001
         logger.error("Erreur lors de la connexion Facebook : %s", exc)
@@ -317,6 +320,35 @@ def api_facebook_connect():
             "success": False,
             "error": f"Erreur lors de la connexion Facebook : {exc}",
         }), 500
+
+
+@app.route("/api/facebook/diagnostic")
+def api_facebook_diagnostic():
+    """
+    API : diagnostic complet du token Facebook.
+    Vérifie la validité du token et les permissions via /debug_token.
+    """
+    if not config.META_ACCESS_TOKEN:
+        return jsonify({
+            "success": False,
+            "error": "META_ACCESS_TOKEN non configuré dans .env",
+        }), 400
+
+    facebook = facebook_client.FacebookClient()
+    token_info = facebook.check_token()
+
+    if token_info is None:
+        return jsonify({
+            "success": False,
+            "error": "Erreur réseau lors de la vérification du token Meta",
+        }), 500
+
+    return jsonify({
+        "success": True,
+        "token_info": token_info,
+        "page_id": config.FACEBOOK_PAGE_ID,
+        "dry_run": config.DRY_RUN,
+    })
 
 
 @app.route("/api/twitter/connect", methods=["POST"])
