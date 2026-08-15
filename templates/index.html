@@ -3,186 +3,370 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Veille technologique IA — Actualités générées automatiquement">
     <title>Breaking News AI — Veille Technologique</title>
     <style>
+        /* ═══════════════════════════════════════════
+           DESIGN SYSTEM — Tokens & Variables
+           ═══════════════════════════════════════════ */
+        :root {
+            /* Couleurs */
+            --color-bg: #0a0e1a;
+            --color-bg-gradient-1: #0f0c29;
+            --color-bg-gradient-2: #1a1a3e;
+            --color-surface: rgba(255, 255, 255, 0.04);
+            --color-surface-hover: rgba(255, 255, 255, 0.08);
+            --color-surface-active: rgba(255, 255, 255, 0.12);
+            --color-border: rgba(255, 255, 255, 0.1);
+            --color-border-hover: rgba(255, 255, 255, 0.2);
+
+            --color-text: #e8eaf0;
+            --color-text-secondary: #9aa0b0;
+            --color-text-muted: #6b7280;
+
+            --color-primary: #00d2ff;
+            --color-primary-dark: #3a7bd5;
+            --color-primary-glow: rgba(0, 210, 255, 0.3);
+
+            --color-twitter: #1da1f2;
+            --color-twitter-dark: #0d8bd9;
+            --color-facebook: #4267b2;
+            --color-facebook-dark: #365899;
+            --color-instagram: #e1306c;
+
+            --color-success: #2ed573;
+            --color-success-bg: rgba(46, 213, 115, 0.12);
+            --color-warning: #ffad1f;
+            --color-warning-bg: rgba(255, 173, 31, 0.12);
+            --color-error: #ff4757;
+            --color-error-bg: rgba(255, 71, 87, 0.12);
+            --color-info: #00d2ff;
+            --color-info-bg: rgba(0, 210, 255, 0.12);
+
+            /* Espacements */
+            --spacing-xs: 4px;
+            --spacing-sm: 8px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            --spacing-2xl: 48px;
+
+            /* Rayons */
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+            --radius-full: 999px;
+
+            /* Ombres */
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4);
+            --shadow-glow-primary: 0 4px 20px var(--color-primary-glow);
+            --shadow-glow-twitter: 0 4px 20px rgba(29, 161, 242, 0.3);
+            --shadow-glow-facebook: 0 4px 20px rgba(66, 103, 178, 0.3);
+
+            /* Typographie */
+            --font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            --font-size-xs: 0.75rem;
+            --font-size-sm: 0.875rem;
+            --font-size-md: 1rem;
+            --font-size-lg: 1.25rem;
+            --font-size-xl: 1.5rem;
+            --font-size-2xl: 2rem;
+            --font-size-3xl: 2.5rem;
+
+            /* Transitions */
+            --transition-fast: 0.15s ease;
+            --transition-base: 0.25s ease;
+            --transition-slow: 0.4s ease;
+
+            /* Z-index */
+            --z-toast: 1000;
+            --z-modal: 2000;
+        }
+
+        /* ═══════════════════════════════════════════
+           RESET & BASE
+           ═══════════════════════════════════════════ */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
+        html {
+            scroll-behavior: smooth;
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-            color: #e0e0e0;
+            font-family: var(--font-family);
+            font-size: var(--font-size-md);
+            line-height: 1.6;
+            background: linear-gradient(135deg, var(--color-bg-gradient-1), var(--color-bg-gradient-2), var(--color-bg));
+            background-attachment: fixed;
+            color: var(--color-text);
             min-height: 100vh;
-            padding: 20px;
+            padding: var(--spacing-lg);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
+        a {
+            color: var(--color-primary);
+            text-decoration: none;
+            transition: color var(--transition-fast);
+        }
+
+        a:hover {
+            color: var(--color-primary);
+            text-decoration: underline;
+        }
+
+        button {
+            font-family: inherit;
+            cursor: pointer;
+        }
+
+        :focus-visible {
+            outline: 2px solid var(--color-primary);
+            outline-offset: 2px;
+            border-radius: var(--radius-sm);
+        }
+
+        /* ═══════════════════════════════════════════
+           LAYOUT
+           ═══════════════════════════════════════════ */
         .container {
-            max-width: 1000px;
+            max-width: 1100px;
             margin: 0 auto;
+            width: 100%;
         }
 
-        header {
+        /* ═══════════════════════════════════════════
+           HEADER
+           ═══════════════════════════════════════════ */
+        .header {
             text-align: center;
-            padding: 30px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            margin-bottom: 30px;
+            padding: var(--spacing-2xl) 0 var(--spacing-lg);
+            border-bottom: 1px solid var(--color-border);
+            margin-bottom: var(--spacing-xl);
         }
 
-        header h1 {
-            font-size: 2.5rem;
-            background: linear-gradient(90deg, #00d2ff, #3a7bd5);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 10px;
-        }
-
-        header p {
-            color: #888;
-            font-size: 0.9rem;
-        }
-
-        .badge {
-            display: inline-block;
-            background: #ff4757;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: bold;
+        .header__badge {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            background: var(--color-error-bg);
+            color: var(--color-error);
+            padding: var(--spacing-xs) var(--spacing-md);
+            border-radius: var(--radius-full);
+            font-size: var(--font-size-xs);
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 15px;
+            letter-spacing: 1.5px;
+            margin-bottom: var(--spacing-md);
             animation: pulse 2s infinite;
         }
 
+        .header__title {
+            font-size: var(--font-size-3xl);
+            font-weight: 800;
+            background: linear-gradient(90deg, var(--color-primary), var(--color-primary-dark));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: var(--spacing-sm);
+            letter-spacing: -0.5px;
+        }
+
+        .header__subtitle {
+            color: var(--color-text-secondary);
+            font-size: var(--font-size-sm);
+        }
+
+        /* ═══════════════════════════════════════════
+           STATUS BADGES
+           ═══════════════════════════════════════════ */
         .status-badges {
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 10px;
+            gap: var(--spacing-sm);
             flex-wrap: wrap;
-            margin-top: 15px;
+            margin-top: var(--spacing-md);
         }
 
         .status-badge {
-            display: inline-block;
-            padding: 5px 14px;
-            border-radius: 20px;
-            font-size: 0.8rem;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            padding: var(--spacing-xs) var(--spacing-md);
+            border-radius: var(--radius-full);
+            font-size: var(--font-size-xs);
             font-weight: 600;
             letter-spacing: 0.3px;
+            transition: transform var(--transition-fast), box-shadow var(--transition-fast);
         }
 
-        .status-badge.dry-run {
-            background: rgba(255, 173, 31, 0.15);
+        .status-badge:hover {
+            transform: translateY(-1px);
+        }
+
+        .status-badge--dry-run {
+            background: var(--color-warning-bg);
             border: 1px solid rgba(255, 173, 31, 0.4);
-            color: #ffad1f;
+            color: var(--color-warning);
         }
 
-        .status-badge.live {
-            background: rgba(46, 213, 115, 0.15);
+        .status-badge--live {
+            background: var(--color-success-bg);
             border: 1px solid rgba(46, 213, 115, 0.4);
-            color: #2ed573;
+            color: var(--color-success);
         }
 
-        .status-badge.twitter {
-            background: rgba(29, 161, 242, 0.15);
+        .status-badge--twitter {
+            background: rgba(29, 161, 242, 0.12);
             border: 1px solid rgba(29, 161, 242, 0.4);
-            color: #1da1f2;
+            color: var(--color-twitter);
         }
 
-        .status-badge.twitter-off {
-            background: rgba(255, 71, 87, 0.15);
+        .status-badge--twitter-off {
+            background: var(--color-error-bg);
             border: 1px solid rgba(255, 71, 87, 0.4);
-            color: #ff4757;
+            color: var(--color-error);
         }
 
-        .status-badge.schedule {
-            background: rgba(0, 210, 255, 0.15);
+        .status-badge--schedule {
+            background: var(--color-info-bg);
             border: 1px solid rgba(0, 210, 255, 0.4);
-            color: #00d2ff;
+            color: var(--color-info);
         }
 
-        .status-badge.facebook {
-            background: rgba(66, 103, 178, 0.15);
+        .status-badge--facebook {
+            background: rgba(66, 103, 178, 0.12);
             border: 1px solid rgba(66, 103, 178, 0.4);
-            color: #4267b2;
+            color: var(--color-facebook);
         }
 
-        .status-badge.facebook-off {
-            background: rgba(255, 71, 87, 0.15);
+        .status-badge--facebook-off {
+            background: var(--color-error-bg);
             border: 1px solid rgba(255, 71, 87, 0.4);
-            color: #ff4757;
+            color: var(--color-error);
         }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-
-        .controls {
+        /* ═══════════════════════════════════════════
+           CONTROLS — Tabs
+           ═══════════════════════════════════════════ */
+        .controls-tabs {
             display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 20px;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
             flex-wrap: wrap;
-            margin-bottom: 20px;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
         }
 
-        .controls label {
-            color: #aaa;
-            font-size: 0.9rem;
-        }
-
-        .controls-group {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-
-        .controls-group-title {
-            color: #fff;
-            font-size: 1.1rem;
+        .controls-tab {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            color: var(--color-text-secondary);
+            padding: var(--spacing-sm) var(--spacing-lg);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-sm);
             font-weight: 600;
-            margin-bottom: 5px;
+            transition: all var(--transition-base);
+        }
+
+        .controls-tab:hover {
+            background: var(--color-surface-hover);
+            color: var(--color-text);
+            border-color: var(--color-border-hover);
+        }
+
+        .controls-tab.active {
+            background: var(--color-info-bg);
+            border-color: rgba(0, 210, 255, 0.4);
+            color: var(--color-primary);
+        }
+
+        .controls-panel {
+            display: none;
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-lg);
+            backdrop-filter: blur(10px);
+            animation: fadeIn var(--transition-base);
+        }
+
+        .controls-panel.active {
+            display: block;
+        }
+
+        .controls-panel__title {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--spacing-sm);
+            color: var(--color-text);
+            font-size: var(--font-size-lg);
+            font-weight: 700;
+            margin-bottom: var(--spacing-md);
         }
 
+        .controls-panel__row {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            flex-wrap: wrap;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .controls-panel__row:last-child {
+            margin-bottom: 0;
+        }
+
+        .controls-panel__label {
+            color: var(--color-text-secondary);
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+        }
+
+        .controls-panel__hint {
+            color: var(--color-text-muted);
+            font-size: var(--font-size-xs);
+            width: 100%;
+            text-align: center;
+            margin-top: var(--spacing-sm);
+        }
+
+        /* ═══════════════════════════════════════════
+           FORM ELEMENTS
+           ═══════════════════════════════════════════ */
+        .time-input,
         .interval-select {
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 8px 15px;
-            border-radius: 8px;
-            font-size: 0.95rem;
+            background: var(--color-surface-active);
+            color: var(--color-text);
+            border: 1px solid var(--color-border);
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-sm);
             cursor: pointer;
-        }
-
-        .interval-select option {
-            background: #24243e;
-            color: #fff;
-        }
-
-        .time-input {
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 0.95rem;
-            cursor: pointer;
+            transition: border-color var(--transition-fast), background var(--transition-fast);
             color-scheme: dark;
+        }
+
+        .time-input:hover,
+        .interval-select:hover {
+            border-color: var(--color-border-hover);
+            background: rgba(255, 255, 255, 0.16);
+        }
+
+        .time-input:focus,
+        .interval-select:focus {
+            border-color: var(--color-primary);
+            outline: none;
         }
 
         .time-input::-webkit-calendar-picker-indicator {
@@ -190,383 +374,585 @@
             cursor: pointer;
         }
 
+        .interval-select option {
+            background: var(--color-bg);
+            color: var(--color-text);
+        }
+
+        /* ═══════════════════════════════════════════
+           NETWORK CHECKBOXES
+           ═══════════════════════════════════════════ */
         .network-check {
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 8px;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            padding: 8px 14px;
-            border-radius: 8px;
+            gap: var(--spacing-sm);
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-md);
             cursor: pointer;
-            transition: background 0.2s, border-color 0.2s;
-            color: #ddd;
-            font-size: 0.9rem;
+            transition: all var(--transition-base);
+            color: var(--color-text-secondary);
+            font-size: var(--font-size-sm);
             user-select: none;
         }
 
         .network-check:hover {
-            background: rgba(255, 255, 255, 0.14);
+            background: var(--color-surface-hover);
+            border-color: var(--color-border-hover);
+            transform: translateY(-1px);
         }
 
         .network-check input[type="checkbox"] {
             width: 16px;
             height: 16px;
-            accent-color: #00d2ff;
+            accent-color: var(--color-primary);
             cursor: pointer;
         }
 
-        .network-check.twitter-check {
-            border-color: rgba(29, 161, 242, 0.4);
+        .network-check--twitter {
+            border-color: rgba(29, 161, 242, 0.3);
         }
 
-        .network-check.facebook-check {
-            border-color: rgba(66, 103, 178, 0.4);
+        .network-check--facebook {
+            border-color: rgba(66, 103, 178, 0.3);
         }
 
-        .network-check.instagram-check {
-            border-color: rgba(225, 48, 108, 0.4);
+        .network-check--instagram {
+            border-color: rgba(225, 48, 108, 0.3);
         }
 
         .network-check.checked {
-            background: rgba(0, 210, 255, 0.12);
+            background: var(--color-info-bg);
             border-color: rgba(0, 210, 255, 0.5);
+            color: var(--color-text);
         }
 
-        .schedule-hint {
-            color: #777;
-            font-size: 0.8rem;
-            width: 100%;
-            text-align: center;
-        }
-
-        .news-card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 30px;
-            margin-bottom: 30px;
-            backdrop-filter: blur(10px);
-        }
-
-        .news-card h2 {
-            font-size: 1.6rem;
-            margin-bottom: 15px;
+        /* ═══════════════════════════════════════════
+           BUTTONS
+           ═══════════════════════════════════════════ */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-sm);
+            background: linear-gradient(90deg, var(--color-primary), var(--color-primary-dark));
             color: #fff;
+            padding: var(--spacing-sm) var(--spacing-lg);
+            border-radius: var(--radius-md);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: var(--font-size-sm);
+            border: none;
+            cursor: pointer;
+            transition: transform var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-glow-primary);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn--secondary {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            color: var(--color-text);
+        }
+
+        .btn--secondary:hover {
+            background: var(--color-surface-hover);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn--twitter {
+            background: linear-gradient(90deg, var(--color-twitter), var(--color-twitter-dark));
+            border: 1px solid rgba(29, 161, 242, 0.5);
+        }
+
+        .btn--twitter:hover {
+            box-shadow: var(--shadow-glow-twitter);
+        }
+
+        .btn--facebook {
+            background: linear-gradient(90deg, var(--color-facebook), var(--color-facebook-dark));
+            border: 1px solid rgba(66, 103, 178, 0.5);
+        }
+
+        .btn--facebook:hover {
+            box-shadow: var(--shadow-glow-facebook);
+        }
+
+        .btn--small {
+            padding: var(--spacing-xs) var(--spacing-md);
+            font-size: var(--font-size-xs);
+        }
+
+        .btn--icon {
+            padding: var(--spacing-xs) var(--spacing-sm);
+            font-size: var(--font-size-sm);
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            color: var(--color-text-secondary);
+            border-radius: var(--radius-sm);
+            transition: all var(--transition-fast);
+        }
+
+        .btn--icon:hover {
+            background: var(--color-surface-hover);
+            color: var(--color-text);
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* Spinner dans les boutons */
+        .btn .spinner {
+            display: none;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .btn.loading .spinner {
+            display: inline-block;
+        }
+
+        .btn.loading {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        /* ═══════════════════════════════════════════
+           STATS
+           ═══════════════════════════════════════════ */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .stat-box {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            text-align: center;
+            transition: transform var(--transition-base), border-color var(--transition-base);
+        }
+
+        .stat-box:hover {
+            transform: translateY(-2px);
+            border-color: var(--color-border-hover);
+        }
+
+        .stat-box__value {
+            font-size: var(--font-size-2xl);
+            font-weight: 800;
+            color: var(--color-primary);
+            line-height: 1.2;
+        }
+
+        .stat-box__label {
+            color: var(--color-text-secondary);
+            font-size: var(--font-size-xs);
+            margin-top: var(--spacing-xs);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ═══════════════════════════════════════════
+           NEWS CARD
+           ═══════════════════════════════════════════ */
+        .news-card {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            margin-bottom: var(--spacing-xl);
+            backdrop-filter: blur(10px);
+            animation: fadeInUp var(--transition-slow);
+        }
+
+        .news-card__title {
+            font-size: var(--font-size-xl);
+            font-weight: 700;
+            margin-bottom: var(--spacing-md);
+            color: var(--color-text);
             line-height: 1.4;
         }
 
         .news-meta {
             display: flex;
-            gap: 15px;
+            gap: var(--spacing-sm);
             flex-wrap: wrap;
-            margin-bottom: 20px;
-            font-size: 0.85rem;
-            color: #aaa;
+            margin-bottom: var(--spacing-md);
+            font-size: var(--font-size-xs);
+            color: var(--color-text-secondary);
         }
 
-        .news-meta span {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 4px 10px;
-            border-radius: 6px;
+        .news-meta__item {
+            background: var(--color-surface-active);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-xs);
         }
 
         .breaking-text {
-            background: rgba(0, 210, 255, 0.1);
-            border-left: 4px solid #00d2ff;
-            padding: 15px 20px;
-            border-radius: 0 8px 8px 0;
-            margin-bottom: 20px;
-            font-size: 1.1rem;
-            line-height: 1.6;
+            background: var(--color-info-bg);
+            border-left: 4px solid var(--color-primary);
+            padding: var(--spacing-md) var(--spacing-lg);
+            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+            margin-bottom: var(--spacing-md);
+            font-size: var(--font-size-md);
+            line-height: 1.7;
             color: #d0f0ff;
         }
 
         .summary {
-            color: #bbb;
-            line-height: 1.6;
-            margin-bottom: 20px;
-            font-size: 0.95rem;
-            background: rgba(255, 255, 255, 0.03);
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--color-text-secondary);
+            line-height: 1.7;
+            margin-bottom: var(--spacing-md);
+            font-size: var(--font-size-sm);
+            background: var(--color-surface);
+            padding: var(--spacing-md);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--color-border);
         }
 
         .summary strong {
-            color: #00d2ff;
-        }
-
-        .btn {
-            display: inline-block;
-            background: linear-gradient(90deg, #00d2ff, #3a7bd5);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 600;
-            transition: transform 0.2s, box-shadow 0.2s;
-            border: none;
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(0, 210, 255, 0.3);
-        }
-
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.2);
-            box-shadow: none;
-        }
-
-        .btn-tweet {
-            background: linear-gradient(90deg, #1da1f2, #0d8bd9);
-        }
-
-        .btn-tweet:hover {
-            box-shadow: 0 5px 20px rgba(29, 161, 242, 0.3);
-        }
-
-        .btn-twitter {
-            background: linear-gradient(90deg, #1da1f2, #0d8bd9);
-            border: 1px solid rgba(29, 161, 242, 0.5);
-        }
-
-        .btn-twitter:hover {
-            box-shadow: 0 5px 20px rgba(29, 161, 242, 0.3);
-        }
-
-        .btn-facebook {
-            background: linear-gradient(90deg, #4267b2, #365899);
-            border: 1px solid rgba(66, 103, 178, 0.5);
-        }
-
-        .btn-facebook:hover {
-            box-shadow: 0 5px 20px rgba(66, 103, 178, 0.3);
-        }
-
-        .btn-small {
-            padding: 6px 12px;
-            font-size: 0.8rem;
+            color: var(--color-primary);
         }
 
         .actions {
             display: flex;
-            gap: 10px;
-            margin-top: 20px;
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-md);
             flex-wrap: wrap;
         }
 
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-
-        .stat-box {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            padding: 20px;
-            text-align: center;
-        }
-
-        .stat-box .value {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #00d2ff;
-        }
-
-        .stat-box .label {
-            color: #888;
-            font-size: 0.85rem;
-            margin-top: 5px;
-        }
-
-        .history {
-            margin-top: 30px;
-        }
-
-        .history h3 {
-            color: #fff;
-            margin-bottom: 15px;
-            font-size: 1.3rem;
-        }
-
-        .history-item {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 8px;
-            padding: 15px 20px;
-            margin-bottom: 10px;
-            transition: background 0.2s;
-        }
-
-        .history-item:hover {
-            background: rgba(255, 255, 255, 0.06);
-        }
-
-        .history-item a {
-            color: #00d2ff;
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        .history-item a:hover {
-            text-decoration: underline;
-        }
-
-        .history-item .date {
-            color: #666;
-            font-size: 0.8rem;
-            margin-top: 5px;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 50px 20px;
-            color: #888;
-        }
-
-        .empty-state .icon {
-            font-size: 3rem;
-            margin-bottom: 15px;
-        }
-
-        footer {
-            text-align: center;
-            padding: 30px 0;
-            color: #555;
-            font-size: 0.8rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            margin-top: 30px;
-        }
-
-        .loading {
+        /* ═══════════════════════════════════════════
+           SKELETON LOADING
+           ═══════════════════════════════════════════ */
+        .skeleton {
             display: none;
-            color: #00d2ff;
-            margin-top: 10px;
-            font-size: 0.9rem;
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            margin-bottom: var(--spacing-xl);
         }
 
-        .toast {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: #2ed573;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            display: none;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
-            z-index: 1000;
+        .skeleton.active {
+            display: block;
+            animation: fadeIn var(--transition-base);
         }
 
-        .toast.error {
-            background: #ff4757;
+        .skeleton__line {
+            height: 16px;
+            border-radius: var(--radius-sm);
+            background: linear-gradient(90deg, var(--color-surface) 25%, var(--color-surface-hover) 50%, var(--color-surface) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            margin-bottom: var(--spacing-md);
         }
 
-        /* ── Propositions secondaires ── */
+        .skeleton__line--title {
+            height: 28px;
+            width: 70%;
+        }
+
+        .skeleton__line--text {
+            width: 100%;
+        }
+
+        .skeleton__line--text-short {
+            width: 85%;
+        }
+
+        .skeleton__line--button {
+            width: 150px;
+            height: 40px;
+            border-radius: var(--radius-md);
+        }
+
+        /* ═══════════════════════════════════════════
+           PROPOSALS
+           ═══════════════════════════════════════════ */
         .secondary-proposals {
-            margin-top: 30px;
+            margin-top: var(--spacing-xl);
         }
 
-        .secondary-proposals h3 {
-            color: #fff;
-            margin-bottom: 15px;
-            font-size: 1.3rem;
+        .secondary-proposals__title {
+            color: var(--color-text);
+            margin-bottom: var(--spacing-md);
+            font-size: var(--font-size-lg);
+            font-weight: 700;
         }
 
         .proposals-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 15px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: var(--spacing-md);
         }
 
         .proposal-card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            padding: 20px;
-            transition: background 0.2s, transform 0.2s;
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            transition: all var(--transition-base);
+            display: flex;
+            flex-direction: column;
         }
 
         .proposal-card:hover {
-            background: rgba(255, 255, 255, 0.08);
+            background: var(--color-surface-hover);
             transform: translateY(-2px);
+            border-color: var(--color-border-hover);
+            box-shadow: var(--shadow-md);
         }
 
-        .proposal-header {
+        .proposal-card.refreshing {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .proposal-card__header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: var(--spacing-sm);
         }
 
-        .proposal-badge {
-            background: rgba(0, 210, 255, 0.2);
-            color: #00d2ff;
-            padding: 3px 10px;
-            border-radius: 15px;
-            font-size: 0.75rem;
-            font-weight: bold;
+        .proposal-card__badge {
+            background: var(--color-info-bg);
+            color: var(--color-primary);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--radius-full);
+            font-size: var(--font-size-xs);
+            font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
-        .btn-refresh {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: #aaa;
-            padding: 5px 10px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: background 0.2s, color 0.2s;
-        }
-
-        .btn-refresh:hover {
-            background: rgba(255, 255, 255, 0.2);
-            color: #fff;
-        }
-
-        .proposal-card h4 {
-            color: #fff;
-            font-size: 1rem;
-            margin-bottom: 8px;
+        .proposal-card__title {
+            color: var(--color-text);
+            font-size: var(--font-size-md);
+            font-weight: 600;
+            margin-bottom: var(--spacing-sm);
             line-height: 1.4;
         }
 
-        .proposal-meta {
-            color: #888;
-            font-size: 0.8rem;
-            margin-bottom: 10px;
+        .proposal-card__meta {
+            color: var(--color-text-muted);
+            font-size: var(--font-size-xs);
+            margin-bottom: var(--spacing-sm);
         }
 
-        .proposal-text {
-            color: #bbb;
-            font-size: 0.9rem;
-            line-height: 1.5;
-            margin-bottom: 15px;
-            background: rgba(255, 255, 255, 0.03);
-            padding: 10px;
-            border-radius: 6px;
+        .proposal-card__text {
+            color: var(--color-text-secondary);
+            font-size: var(--font-size-sm);
+            line-height: 1.6;
+            margin-bottom: var(--spacing-md);
+            background: var(--color-surface);
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-sm);
+            flex: 1;
         }
 
-        .proposal-actions {
+        .proposal-card__actions {
             display: flex;
-            gap: 8px;
+            gap: var(--spacing-sm);
         }
 
-        /* ── Simulation visuelle du tweet ── */
+        /* ═══════════════════════════════════════════
+           HISTORY
+           ═══════════════════════════════════════════ */
+        .history {
+            margin-top: var(--spacing-xl);
+        }
+
+        .history__title {
+            color: var(--color-text);
+            margin-bottom: var(--spacing-md);
+            font-size: var(--font-size-lg);
+            font-weight: 700;
+        }
+
+        .history-item {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md) var(--spacing-lg);
+            margin-bottom: var(--spacing-sm);
+            transition: all var(--transition-base);
+        }
+
+        .history-item:hover {
+            background: var(--color-surface-hover);
+            border-color: var(--color-border-hover);
+            transform: translateX(4px);
+        }
+
+        .history-item__link {
+            color: var(--color-primary);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: var(--font-size-sm);
+        }
+
+        .history-item__link:hover {
+            text-decoration: underline;
+        }
+
+        .history-item__date {
+            color: var(--color-text-muted);
+            font-size: var(--font-size-xs);
+            margin-top: var(--spacing-xs);
+        }
+
+        /* ═══════════════════════════════════════════
+           EMPTY STATE
+           ═══════════════════════════════════════════ */
+        .empty-state {
+            text-align: center;
+            padding: var(--spacing-2xl) var(--spacing-lg);
+            color: var(--color-text-secondary);
+        }
+
+        .empty-state__icon {
+            font-size: 3rem;
+            margin-bottom: var(--spacing-md);
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .empty-state__title {
+            color: var(--color-text);
+            font-size: var(--font-size-xl);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .empty-state__text {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        /* ═══════════════════════════════════════════
+           FOOTER
+           ═══════════════════════════════════════════ */
+        .footer {
+            text-align: center;
+            padding: var(--spacing-xl) 0;
+            color: var(--color-text-muted);
+            font-size: var(--font-size-xs);
+            border-top: 1px solid var(--color-border);
+            margin-top: var(--spacing-xl);
+        }
+
+        .footer__sources {
+            margin-top: var(--spacing-xs);
+            opacity: 0.8;
+        }
+
+        /* ═══════════════════════════════════════════
+           TOASTS
+           ═══════════════════════════════════════════ */
+        .toast-container {
+            position: fixed;
+            bottom: var(--spacing-lg);
+            right: var(--spacing-lg);
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+            z-index: var(--z-toast);
+            max-width: 400px;
+        }
+
+        .toast {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--spacing-sm);
+            background: var(--color-surface-active);
+            border: 1px solid var(--color-border);
+            color: var(--color-text);
+            padding: var(--spacing-md) var(--spacing-lg);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            backdrop-filter: blur(10px);
+            font-size: var(--font-size-sm);
+            line-height: 1.5;
+            animation: slideInRight var(--transition-base);
+            max-width: 100%;
+        }
+
+        .toast--success {
+            border-left: 4px solid var(--color-success);
+            background: var(--color-success-bg);
+        }
+
+        .toast--error {
+            border-left: 4px solid var(--color-error);
+            background: var(--color-error-bg);
+        }
+
+        .toast--info {
+            border-left: 4px solid var(--color-info);
+            background: var(--color-info-bg);
+        }
+
+        .toast--warning {
+            border-left: 4px solid var(--color-warning);
+            background: var(--color-warning-bg);
+        }
+
+        .toast__icon {
+            font-size: var(--font-size-md);
+            flex-shrink: 0;
+        }
+
+        .toast__message {
+            flex: 1;
+            white-space: pre-line;
+        }
+
+        .toast__close {
+            background: none;
+            border: none;
+            color: var(--color-text-secondary);
+            font-size: var(--font-size-md);
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+            transition: color var(--transition-fast);
+        }
+
+        .toast__close:hover {
+            color: var(--color-text);
+        }
+
+        .toast.hiding {
+            animation: slideOutRight var(--transition-base) forwards;
+        }
+
+        /* ═══════════════════════════════════════════
+           TWEET MODAL
+           ═══════════════════════════════════════════ */
         .tweet-modal {
             display: none;
             position: fixed;
@@ -575,301 +961,561 @@
             right: 0;
             bottom: 0;
             background: rgba(0, 0, 0, 0.8);
-            z-index: 2000;
+            z-index: var(--z-modal);
             justify-content: center;
             align-items: center;
-            padding: 20px;
+            padding: var(--spacing-lg);
+            backdrop-filter: blur(4px);
         }
 
         .tweet-modal.active {
             display: flex;
+            animation: fadeIn var(--transition-base);
         }
 
         .tweet-preview {
             background: #fff;
             color: #0f1419;
-            border-radius: 16px;
+            border-radius: var(--radius-lg);
             max-width: 600px;
             width: 100%;
-            padding: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            padding: var(--spacing-lg);
+            box-shadow: var(--shadow-lg);
+            animation: scaleIn var(--transition-base);
         }
 
-        .tweet-header {
+        .tweet-preview__header {
             display: flex;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 15px;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
         }
 
-        .tweet-avatar {
+        .tweet-preview__avatar {
             width: 48px;
             height: 48px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #1da1f2, #0d8bd9);
+            background: linear-gradient(135deg, var(--color-twitter), var(--color-twitter-dark));
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
-            color: white;
-            font-weight: bold;
+            font-size: var(--font-size-xl);
+            color: #fff;
+            font-weight: 700;
+            flex-shrink: 0;
         }
 
-        .tweet-user {
+        .tweet-preview__user {
             flex: 1;
+            min-width: 0;
         }
 
-        .tweet-user .name {
-            font-weight: bold;
-            font-size: 1rem;
+        .tweet-preview__name {
+            font-weight: 700;
+            font-size: var(--font-size-md);
         }
 
-        .tweet-user .handle {
+        .tweet-preview__handle {
             color: #536471;
-            font-size: 0.9rem;
+            font-size: var(--font-size-sm);
         }
 
-        .tweet-body {
-            font-size: 1.1rem;
+        .tweet-preview__body {
+            font-size: var(--font-size-md);
             line-height: 1.5;
-            margin-bottom: 15px;
+            margin-bottom: var(--spacing-md);
             white-space: pre-wrap;
             word-wrap: break-word;
         }
 
-        .tweet-body a {
-            color: #1da1f2;
+        .tweet-preview__body a {
+            color: var(--color-twitter);
             text-decoration: none;
         }
 
-        .tweet-body a:hover {
+        .tweet-preview__body a:hover {
             text-decoration: underline;
         }
 
-        .tweet-card-preview {
+        .tweet-preview__card {
             background: #f7f9fa;
             border: 1px solid #e1e8ed;
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 15px;
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
         }
 
-        .tweet-card-preview .card-title {
-            font-weight: bold;
-            font-size: 0.95rem;
-            margin-bottom: 5px;
+        .tweet-preview__card-title {
+            font-weight: 700;
+            font-size: var(--font-size-sm);
+            margin-bottom: var(--spacing-xs);
         }
 
-        .tweet-card-preview .card-source {
+        .tweet-preview__card-source {
             color: #536471;
-            font-size: 0.85rem;
+            font-size: var(--font-size-xs);
         }
 
-        .tweet-footer {
+        .tweet-preview__footer {
             display: flex;
             justify-content: space-between;
             align-items: center;
             border-top: 1px solid #e1e8ed;
-            padding-top: 12px;
-            margin-top: 10px;
+            padding-top: var(--spacing-md);
+            margin-top: var(--spacing-sm);
         }
 
-        .tweet-actions {
+        .tweet-preview__actions {
             display: flex;
-            gap: 20px;
+            gap: var(--spacing-lg);
             color: #536471;
-            font-size: 0.9rem;
+            font-size: var(--font-size-sm);
         }
 
-        .tweet-actions span {
+        .tweet-preview__actions span {
             cursor: pointer;
+            transition: color var(--transition-fast);
         }
 
-        .tweet-actions span:hover {
-            color: #1da1f2;
+        .tweet-preview__actions span:hover {
+            color: var(--color-twitter);
         }
 
-        .tweet-char-count {
+        .tweet-preview__char-count {
             color: #536471;
-            font-size: 0.85rem;
+            font-size: var(--font-size-xs);
         }
 
-        .tweet-char-count.warning {
-            color: #ffad1f;
+        .tweet-preview__char-count.warning {
+            color: var(--color-warning);
         }
 
-        .tweet-char-count.danger {
-            color: #f4212e;
+        .tweet-preview__char-count.danger {
+            color: var(--color-error);
         }
 
-        .tweet-modal-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-            justify-content: flex-end;
-        }
-
-        .tweet-modal-actions .btn {
-            padding: 8px 16px;
-            font-size: 0.9rem;
-        }
-
-        .btn-close {
-            background: #e1e8ed;
-            color: #0f1419;
-        }
-
-        .btn-close:hover {
-            background: #d0d9e0;
-            box-shadow: none;
-        }
-
-        .btn-publish {
-            background: #1da1f2;
-        }
-
-        .btn-publish:hover {
-            background: #0d8bd9;
-            box-shadow: 0 5px 20px rgba(29, 161, 242, 0.3);
-        }
-
-        .tweet-status {
-            margin-top: 10px;
-            padding: 10px;
-            border-radius: 8px;
-            font-size: 0.9rem;
+        .tweet-preview__status {
+            margin-top: var(--spacing-sm);
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-sm);
             display: none;
         }
 
-        .tweet-status.success {
+        .tweet-preview__status.success {
             background: #e8f5e9;
             color: #2e7d32;
             display: block;
         }
 
-        .tweet-status.error {
+        .tweet-preview__status.error {
             background: #fdecea;
             color: #c62828;
             display: block;
         }
 
-        .tweet-status.dry-run {
+        .tweet-preview__status.dry-run {
             background: #fff3e0;
             color: #e65100;
             display: block;
+        }
+
+        .tweet-preview__modal-actions {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-md);
+            justify-content: flex-end;
+        }
+
+        .tweet-preview__modal-actions .btn {
+            padding: var(--spacing-sm) var(--spacing-md);
+            font-size: var(--font-size-sm);
+        }
+
+        .btn--close {
+            background: #e1e8ed;
+            color: #0f1419;
+        }
+
+        .btn--close:hover {
+            background: #d0d9e0;
+            box-shadow: none;
+        }
+
+        .btn--publish {
+            background: var(--color-twitter);
+        }
+
+        .btn--publish:hover {
+            background: var(--color-twitter-dark);
+            box-shadow: var(--shadow-glow-twitter);
+        }
+
+        /* ═══════════════════════════════════════════
+           ANIMATIONS
+           ═══════════════════════════════════════════ */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(100%); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes slideOutRight {
+            from { opacity: 1; transform: translateX(0); }
+            to { opacity: 0; transform: translateX(100%); }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* ═══════════════════════════════════════════
+           RESPONSIVE
+           ═══════════════════════════════════════════ */
+        @media (max-width: 768px) {
+            body {
+                padding: var(--spacing-md);
+            }
+
+            .header__title {
+                font-size: var(--font-size-2xl);
+            }
+
+            .header__badge {
+                font-size: var(--font-size-xs);
+            }
+
+            .status-badges {
+                gap: var(--spacing-xs);
+            }
+
+            .status-badge {
+                font-size: var(--font-size-xs);
+                padding: var(--spacing-xs) var(--spacing-sm);
+            }
+
+            .controls-panel {
+                padding: var(--spacing-md);
+            }
+
+            .controls-panel__row {
+                flex-direction: column;
+                align-items: stretch;
+                gap: var(--spacing-sm);
+            }
+
+            .controls-panel__row .btn,
+            .controls-panel__row .time-input,
+            .controls-panel__row .interval-select {
+                width: 100%;
+            }
+
+            .network-check {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .news-card {
+                padding: var(--spacing-lg);
+            }
+
+            .news-card__title {
+                font-size: var(--font-size-lg);
+            }
+
+            .actions {
+                flex-direction: column;
+            }
+
+            .actions .btn {
+                width: 100%;
+            }
+
+            .stats {
+                grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+                gap: var(--spacing-sm);
+            }
+
+            .stat-box {
+                padding: var(--spacing-md);
+            }
+
+            .stat-box__value {
+                font-size: var(--font-size-xl);
+            }
+
+            .proposals-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tweet-preview {
+                padding: var(--spacing-md);
+                max-height: 90vh;
+                overflow-y: auto;
+            }
+
+            .tweet-preview__footer {
+                flex-direction: column;
+                gap: var(--spacing-sm);
+                align-items: flex-start;
+            }
+
+            .tweet-preview__modal-actions {
+                flex-direction: column;
+            }
+
+            .tweet-preview__modal-actions .btn {
+                width: 100%;
+            }
+
+            .toast-container {
+                left: var(--spacing-md);
+                right: var(--spacing-md);
+                max-width: none;
+            }
+
+            .controls-tabs {
+                flex-direction: column;
+            }
+
+            .controls-tab {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header__title {
+                font-size: var(--font-size-xl);
+            }
+
+            .header__subtitle {
+                font-size: var(--font-size-xs);
+            }
+
+            .status-badges {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .status-badge {
+                justify-content: center;
+            }
+
+            .news-meta {
+                flex-direction: column;
+            }
+
+            .news-meta__item {
+                justify-content: center;
+            }
+
+            .breaking-text {
+                font-size: var(--font-size-sm);
+                padding: var(--spacing-sm) var(--spacing-md);
+            }
+
+            .summary {
+                font-size: var(--font-size-xs);
+            }
+
+            .history-item {
+                padding: var(--spacing-sm) var(--spacing-md);
+            }
+        }
+
+        /* ═══════════════════════════════════════════
+           ACCESSIBILITY — Reduced Motion
+           ═══════════════════════════════════════════ */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
         }
     </style>
 </head>
 <body data-dry-run="{{ 'true' if dry_run else 'false' }}">
     <div class="container">
-        <header>
-            <div class="badge">🔴 Breaking News</div>
-            <h1>Veille IA & Tech</h1>
-            <p>Actualités générées automatiquement — Dernière mise à jour : {{ now }}</p>
-            <div class="status-badges">
+        <!-- ═══════════════ HEADER ═══════════════ -->
+        <header class="header" role="banner">
+            <div class="header__badge" role="status" aria-label="Mode Breaking News">🔴 Breaking News</div>
+            <h1 class="header__title">Veille IA & Tech</h1>
+            <p class="header__subtitle">Actualités générées automatiquement — Dernière mise à jour : {{ now }}</p>
+            <div class="status-badges" role="status" aria-label="État du système">
                 {% if dry_run %}
-                <span class="status-badge dry-run">🧪 Mode DRY-RUN</span>
+                <span class="status-badge status-badge--dry-run">🧪 Mode DRY-RUN</span>
                 {% else %}
-                <span class="status-badge live">🐦 Publication réelle</span>
+                <span class="status-badge status-badge--live">🐦 Publication réelle</span>
                 {% endif %}
                 {% if twitter_configured %}
-                <span class="status-badge twitter">✅ Twitter connecté</span>
+                <span class="status-badge status-badge--twitter">✅ Twitter connecté</span>
                 {% else %}
-                <span class="status-badge twitter-off">❌ Twitter non configuré</span>
+                <span class="status-badge status-badge--twitter-off">❌ Twitter non configuré</span>
                 {% endif %}
                 {% if facebook_configured %}
-                <span class="status-badge facebook">✅ Facebook connecté</span>
+                <span class="status-badge status-badge--facebook">✅ Facebook connecté</span>
                 {% else %}
-                <span class="status-badge facebook-off">❌ Facebook non configuré</span>
+                <span class="status-badge status-badge--facebook-off">❌ Facebook non configuré</span>
                 {% endif %}
-                <span class="status-badge schedule">🕐 Publication : {{ schedule_times|join(' & ') }} UTC</span>
+                <span class="status-badge status-badge--schedule">🕐 Publication : {{ schedule_times|join(' & ') }} UTC</span>
             </div>
         </header>
 
-        <!-- Contrôles : planification + post minute + connexions -->
-        <div class="controls-group">
+        <!-- ═══════════════ CONTRÔLES (Tabs) ═══════════════ -->
+        <nav class="controls-tabs" role="tablist" aria-label="Contrôles">
+            <button class="controls-tab active" role="tab" aria-selected="true" data-tab="schedule" onclick="switchTab('schedule')">
+                🕐 Planification
+            </button>
+            <button class="controls-tab" role="tab" aria-selected="false" data-tab="post" onclick="switchTab('post')">
+                ⚡ Post minute
+            </button>
+            <button class="controls-tab" role="tab" aria-selected="false" data-tab="connections" onclick="switchTab('connections')">
+                🔗 Connexions
+            </button>
+        </nav>
 
-            <!-- Planification des heures de publication -->
-            <div class="controls">
-                <div class="controls-group-title">🕐 Heures de publication (UTC)</div>
-                <label for="scheduleTime1">Publication 1 :</label>
-                <input type="time" id="scheduleTime1" class="time-input" value="{{ schedule_times[0] if schedule_times|length > 0 else '08:30' }}">
-                <label for="scheduleTime2">Publication 2 :</label>
-                <input type="time" id="scheduleTime2" class="time-input" value="{{ schedule_times[1] if schedule_times|length > 1 else '17:30' }}">
-                <button onclick="saveSchedule()" class="btn btn-secondary">💾 Enregistrer les heures</button>
-                <div class="schedule-hint">Les publications automatiques auront lieu à ces heures (format UTC).</div>
+        <!-- Panneau : Planification -->
+        <section class="controls-panel active" id="panel-schedule" role="tabpanel" aria-label="Planification des publications">
+            <h2 class="controls-panel__title">🕐 Heures de publication (UTC)</h2>
+            <div class="controls-panel__row">
+                <label class="controls-panel__label" for="scheduleTime1">Publication 1 :</label>
+                <input type="time" id="scheduleTime1" class="time-input" value="{{ schedule_times[0] if schedule_times|length > 0 else '08:30' }}" aria-label="Heure de la première publication">
+                <label class="controls-panel__label" for="scheduleTime2">Publication 2 :</label>
+                <input type="time" id="scheduleTime2" class="time-input" value="{{ schedule_times[1] if schedule_times|length > 1 else '17:30' }}" aria-label="Heure de la deuxième publication">
+                <button onclick="saveSchedule()" class="btn btn--secondary" id="saveScheduleBtn">
+                    <span class="spinner" aria-hidden="true"></span>
+                    💾 Enregistrer les heures
+                </button>
             </div>
+            <p class="controls-panel__hint">Les publications automatiques auront lieu à ces heures (format UTC).</p>
+        </section>
 
-            <!-- Post minute : publication immédiate sur le(s) réseau(x) choisi(s) -->
-            <div class="controls">
-                <div class="controls-group-title">⚡ Post minute</div>
-                <label>Envoyer sur :</label>
-                <label class="network-check twitter-check" id="netTwitterLabel">
-                    <input type="checkbox" id="netTwitter" checked onchange="updateNetworkCheck(this, 'netTwitterLabel')">
+        <!-- Panneau : Post minute -->
+        <section class="controls-panel" id="panel-post" role="tabpanel" aria-label="Publication immédiate">
+            <h2 class="controls-panel__title">⚡ Post minute</h2>
+            <div class="controls-panel__row">
+                <span class="controls-panel__label">Envoyer sur :</span>
+                <label class="network-check network-check--twitter" id="netTwitterLabel">
+                    <input type="checkbox" id="netTwitter" checked onchange="updateNetworkCheck(this, 'netTwitterLabel')" aria-label="Publier sur Twitter">
                     🐦 Twitter
                 </label>
-                <label class="network-check facebook-check" id="netFacebookLabel">
-                    <input type="checkbox" id="netFacebook" checked onchange="updateNetworkCheck(this, 'netFacebookLabel')">
+                <label class="network-check network-check--facebook" id="netFacebookLabel">
+                    <input type="checkbox" id="netFacebook" checked onchange="updateNetworkCheck(this, 'netFacebookLabel')" aria-label="Publier sur Facebook">
                     📘 Facebook
                 </label>
-                <label class="network-check instagram-check" id="netInstagramLabel">
-                    <input type="checkbox" id="netInstagram" checked onchange="updateNetworkCheck(this, 'netInstagramLabel')">
+                <label class="network-check network-check--instagram" id="netInstagramLabel">
+                    <input type="checkbox" id="netInstagram" checked onchange="updateNetworkCheck(this, 'netInstagramLabel')" aria-label="Publier sur Instagram">
                     📸 Instagram
                 </label>
-                <button onclick="postNow()" class="btn btn-tweet">⚡ Publier maintenant</button>
-                <div class="schedule-hint">Génère une nouvelle breaking news et la publie immédiatement sur le(s) réseau(x) sélectionné(s).</div>
+                <button onclick="postNow()" class="btn btn--twitter" id="postNowBtn">
+                    <span class="spinner" aria-hidden="true"></span>
+                    ⚡ Publier maintenant
+                </button>
             </div>
+            <p class="controls-panel__hint">Génère une nouvelle breaking news et la publie immédiatement sur le(s) réseau(x) sélectionné(s).</p>
+        </section>
 
-            <!-- Connexions aux réseaux -->
-            <div class="controls">
-                <div class="controls-group-title">🔗 Connexions</div>
-                <label for="interval">🕐 Fréquence de mise à jour :</label>
-                <select id="interval" class="interval-select" onchange="changeInterval(this.value)">
+        <!-- Panneau : Connexions -->
+        <section class="controls-panel" id="panel-connections" role="tabpanel" aria-label="Connexions aux réseaux sociaux">
+            <h2 class="controls-panel__title">🔗 Connexions</h2>
+            <div class="controls-panel__row">
+                <label class="controls-panel__label" for="interval">🕐 Fréquence de mise à jour :</label>
+                <select id="interval" class="interval-select" onchange="changeInterval(this.value)" aria-label="Fréquence de mise à jour">
                     {% for interval in available_intervals %}
                     <option value="{{ interval }}" {% if interval == current_interval %}selected{% endif %}>
                         Toutes les {{ interval }} heures
                     </option>
                     {% endfor %}
                 </select>
-                <button onclick="connectTwitter()" class="btn btn-twitter" id="twitterBtn">
+            </div>
+            <div class="controls-panel__row">
+                <button onclick="connectTwitter()" class="btn btn--twitter" id="twitterBtn">
+                    <span class="spinner" aria-hidden="true"></span>
                     {% if twitter_configured %}
                         ✅ Twitter connecté
                     {% else %}
                         🔗 Connecter Twitter
                     {% endif %}
                 </button>
-                <button onclick="connectFacebook()" class="btn btn-facebook" id="facebookBtn">
+                <button onclick="connectFacebook()" class="btn btn--facebook" id="facebookBtn">
+                    <span class="spinner" aria-hidden="true"></span>
                     {% if facebook_configured %}
                         ✅ Facebook connecté
                     {% else %}
                         🔗 Connecter Facebook
                     {% endif %}
                 </button>
-                <button onclick="diagnosticFacebook()" class="btn btn-secondary" id="facebookDiagBtn">🔍 Diagnostic Facebook</button>
+                <button onclick="diagnosticFacebook()" class="btn btn--secondary" id="facebookDiagBtn">
+                    <span class="spinner" aria-hidden="true"></span>
+                    🔍 Diagnostic Facebook
+                </button>
+            </div>
+        </section>
+
+        <!-- ═══════════════ STATS ═══════════════ -->
+        <div class="stats" role="region" aria-label="Statistiques">
+            <div class="stat-box">
+                <div class="stat-box__value">{{ stats.count }}</div>
+                <div class="stat-box__label">Articles traités</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-box__value">{{ history|length }}</div>
+                <div class="stat-box__label">Breaking News affichées</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-box__value">{{ current_interval }}h</div>
+                <div class="stat-box__label">Fréquence actuelle</div>
             </div>
         </div>
 
-        <div class="stats">
-            <div class="stat-box">
-                <div class="value">{{ stats.count }}</div>
-                <div class="label">Articles traités</div>
-            </div>
-            <div class="stat-box">
-                <div class="value">{{ history|length }}</div>
-                <div class="label">Breaking News affichées</div>
-            </div>
-            <div class="stat-box">
-                <div class="value">{{ current_interval }}h</div>
-                <div class="label">Fréquence actuelle</div>
-            </div>
+        <!-- ═══════════════ SKELETON LOADING ═══════════════ -->
+        <div class="skeleton" id="skeleton" role="status" aria-label="Chargement en cours">
+            <div class="skeleton__line skeleton__line--title"></div>
+            <div class="skeleton__line skeleton__line--text"></div>
+            <div class="skeleton__line skeleton__line--text-short"></div>
+            <div class="skeleton__line skeleton__line--text"></div>
+            <div class="skeleton__line skeleton__line--button"></div>
         </div>
 
+        <!-- ═══════════════ NEWS PRINCIPALE ═══════════════ -->
         {% if latest %}
-        <div class="news-card">
-            <h2>{{ latest.title }}</h2>
+        <article class="news-card" id="mainNews">
+            <h2 class="news-card__title">{{ latest.title }}</h2>
             <div class="news-meta">
-                <span>📰 {{ latest.source }}</span>
-                <span>🕐 {{ latest.published_at_display }}</span>
+                <span class="news-meta__item">📰 {{ latest.source }}</span>
+                <span class="news-meta__item">🕐 {{ latest.published_at_display }}</span>
             </div>
             <div class="breaking-text">
                 {{ latest.breaking_text }}
@@ -880,119 +1526,229 @@
             </div>
             {% endif %}
             <div class="actions">
-                <a href="{{ latest.url }}" target="_blank" class="btn">Lire l'article complet →</a>
-                <button onclick="refreshNews()" class="btn btn-secondary">🔄 Actualiser maintenant</button>
-                <button onclick="tweetNow()" class="btn btn-tweet">🐦 Tweet Now</button>
+                <a href="{{ latest.url }}" target="_blank" rel="noopener noreferrer" class="btn">Lire l'article complet →</a>
+                <button onclick="refreshNews()" class="btn btn--secondary" id="refreshBtn">
+                    <span class="spinner" aria-hidden="true"></span>
+                    🔄 Actualiser maintenant
+                </button>
+                <button onclick="tweetNow()" class="btn btn--twitter" id="tweetNowBtn">
+                    <span class="spinner" aria-hidden="true"></span>
+                    🐦 Tweet Now
+                </button>
             </div>
-            <div class="loading" id="loading">Génération de la nouvelle breaking news en cours…</div>
-        </div>
+        </article>
 
-        <!-- Propositions secondaires rafraîchissables -->
+        <!-- ═══════════════ PROPOSITIONS SECONDAIRES ═══════════════ -->
         {% if latest.secondary_proposals %}
-        <div class="secondary-proposals">
-            <h3>💡 Autres propositions</h3>
+        <section class="secondary-proposals" aria-label="Autres propositions">
+            <h3 class="secondary-proposals__title">💡 Autres propositions</h3>
             <div class="proposals-grid">
                 {% for proposal in latest.secondary_proposals %}
-                <div class="proposal-card" id="proposal-{{ loop.index }}">
-                    <div class="proposal-header">
-                        <span class="proposal-badge">Proposition {{ loop.index }}</span>
-                        <button onclick="refreshProposal({{ loop.index }})" class="btn-refresh" title="Rafraîchir">🔄</button>
+                <div class="proposal-card" id="proposal-{{ loop.index }}" data-index="{{ loop.index }}">
+                    <div class="proposal-card__header">
+                        <span class="proposal-card__badge">Proposition {{ loop.index }}</span>
+                        <button class="btn btn--icon proposal-refresh-btn" title="Rafraîchir cette proposition" aria-label="Rafraîchir la proposition {{ loop.index }}">
+                            <span class="spinner" aria-hidden="true"></span>
+                            🔄
+                        </button>
                     </div>
-                    <h4>{{ proposal.title }}</h4>
-                    <div class="proposal-meta">
+                    <h4 class="proposal-card__title">{{ proposal.title }}</h4>
+                    <div class="proposal-card__meta">
                         <span>📰 {{ proposal.source }}</span>
                     </div>
-                    <div class="proposal-text">{{ proposal.breaking_text }}</div>
-                    <div class="proposal-actions">
-                        <a href="{{ proposal.url }}" target="_blank" class="btn btn-small">Lire →</a>
-                        <button onclick="tweetProposal({{ loop.index }})" class="btn btn-small btn-tweet">🐦 Tweeter</button>
+                    <div class="proposal-card__text">{{ proposal.breaking_text }}</div>
+                    <div class="proposal-card__actions">
+                        <a href="{{ proposal.url }}" target="_blank" rel="noopener noreferrer" class="btn btn--small">Lire →</a>
+                        <button class="btn btn--small btn--twitter proposal-tweet-btn">🐦 Tweeter</button>
                     </div>
                 </div>
                 {% endfor %}
             </div>
-        </div>
+        </section>
         {% endif %}
         {% else %}
-        <div class="news-card empty-state">
-            <div class="icon">📡</div>
-            <h2>Aucune breaking news disponible</h2>
-            <p>La première actualité sera générée automatiquement dans quelques instants.</p>
+        <div class="news-card empty-state" role="status">
+            <div class="empty-state__icon">📡</div>
+            <h2 class="empty-state__title">Aucune breaking news disponible</h2>
+            <p class="empty-state__text">La première actualité sera générée automatiquement dans quelques instants.</p>
             <div class="actions" style="justify-content: center;">
-                <button onclick="refreshNews()" class="btn">🔄 Générer la première news</button>
+                <button onclick="refreshNews()" class="btn" id="refreshBtn">
+                    <span class="spinner" aria-hidden="true"></span>
+                    🔄 Générer la première news
+                </button>
             </div>
-            <div class="loading" id="loading">Génération de la breaking news en cours…</div>
         </div>
         {% endif %}
 
+        <!-- ═══════════════ HISTORIQUE ═══════════════ -->
         {% if history %}
-        <div class="history">
-            <h3>📜 Historique des breaking news</h3>
+        <section class="history" aria-label="Historique des breaking news">
+            <h3 class="history__title">📜 Historique des breaking news</h3>
             {% for item in history %}
             <div class="history-item">
-                <a href="{{ item.url }}" target="_blank">{{ item.title }}</a>
-                <div class="date">{{ item.published_at_display }} — {{ item.source }}</div>
+                <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer" class="history-item__link">{{ item.title }}</a>
+                <div class="history-item__date">{{ item.published_at_display }} — {{ item.source }}</div>
             </div>
             {% endfor %}
-        </div>
+        </section>
         {% endif %}
 
-        <footer>
+        <!-- ═══════════════ FOOTER ═══════════════ -->
+        <footer class="footer" role="contentinfo">
             <p>🤖 Agent de veille automatique — Scraping RSS + Génération IA</p>
-            <p>Sources : Presse-Citron, Clubic, 01net, Frandroid, TechCrunch, MarkTechPost, VentureBeat, The Verge</p>
+            <p class="footer__sources">Sources : Presse-Citron, Clubic, 01net, Frandroid, TechCrunch, MarkTechPost, VentureBeat, The Verge</p>
         </footer>
     </div>
 
-    <!-- Modal de simulation du tweet -->
-    <div class="tweet-modal" id="tweetModal">
+    <!-- ═══════════════ MODAL TWEET ═══════════════ -->
+    <div class="tweet-modal" id="tweetModal" role="dialog" aria-modal="true" aria-label="Aperçu du tweet">
         <div class="tweet-preview">
-            <div class="tweet-header">
-                <div class="tweet-avatar">🤖</div>
-                <div class="tweet-user">
-                    <div class="name">Veille IA & Tech</div>
-                    <div class="handle">@VeilleIA_Tech</div>
+            <div class="tweet-preview__header">
+                <div class="tweet-preview__avatar" aria-hidden="true">🤖</div>
+                <div class="tweet-preview__user">
+                    <div class="tweet-preview__name">Veille IA & Tech</div>
+                    <div class="tweet-preview__handle">@VeilleIA_Tech</div>
                 </div>
             </div>
-            <div class="tweet-body" id="tweetBody"></div>
-            <div class="tweet-card-preview" id="tweetCard">
-                <div class="card-title" id="tweetCardTitle"></div>
-                <div class="card-source" id="tweetCardSource"></div>
+            <div class="tweet-preview__body" id="tweetBody"></div>
+            <div class="tweet-preview__card" id="tweetCard">
+                <div class="tweet-preview__card-title" id="tweetCardTitle"></div>
+                <div class="tweet-preview__card-source" id="tweetCardSource"></div>
             </div>
-            <div class="tweet-footer">
-                <div class="tweet-actions">
+            <div class="tweet-preview__footer">
+                <div class="tweet-preview__actions" aria-hidden="true">
                     <span>💬</span>
                     <span>🔁</span>
                     <span>❤️</span>
                     <span>🔗</span>
                 </div>
-                <div class="tweet-char-count" id="tweetCharCount"></div>
+                <div class="tweet-preview__char-count" id="tweetCharCount"></div>
             </div>
-            <div class="tweet-status" id="tweetStatus"></div>
-            <div class="tweet-modal-actions">
-                <button onclick="closeTweetModal()" class="btn btn-close">Annuler</button>
-                <button onclick="publishTweet()" class="btn btn-publish" id="publishBtn">Publier le tweet</button>
+            <div class="tweet-preview__status" id="tweetStatus" role="status"></div>
+            <div class="tweet-preview__modal-actions">
+                <button onclick="closeTweetModal()" class="btn btn--close">Annuler</button>
+                <button onclick="publishTweet()" class="btn btn--publish" id="publishBtn">
+                    <span class="spinner" aria-hidden="true"></span>
+                    Publier le tweet
+                </button>
             </div>
         </div>
     </div>
 
-    <div class="toast" id="toast"></div>
+    <!-- ═══════════════ TOASTS ═══════════════ -->
+    <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="false"></div>
 
     <script>
+        /* ═══════════════════════════════════════════
+           ÉTAT GLOBAL & UTILITAIRES
+           ═══════════════════════════════════════════ */
         const DRY_RUN = document.body.dataset.dryRun === 'true';
         let currentTweetData = null;
 
-        function showToast(message, isError = false) {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = 'toast' + (isError ? ' error' : '');
-            toast.style.display = 'block';
-            setTimeout(() => {
-                toast.style.display = 'none';
-            }, 4000);
+        // Gestion des toasts
+        function showToast(message, type = 'info', duration = 4000) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast toast--' + type;
+
+            const icons = {
+                success: '✅',
+                error: '❌',
+                info: 'ℹ️',
+                warning: '⚠️'
+            };
+
+            toast.innerHTML = `
+                <span class="toast__icon" aria-hidden="true">${icons[type] || 'ℹ️'}</span>
+                <span class="toast__message">${message}</span>
+                <button class="toast__close" aria-label="Fermer la notification">×</button>
+            `;
+
+            // Fermeture manuelle
+            toast.querySelector('.toast__close').addEventListener('click', () => {
+                hideToast(toast);
+            });
+
+            container.appendChild(toast);
+
+            // Fermeture automatique
+            if (duration > 0) {
+                setTimeout(() => hideToast(toast), duration);
+            }
         }
 
+        function hideToast(toast) {
+            toast.classList.add('hiding');
+            setTimeout(() => toast.remove(), 300);
+        }
+
+        // Gestion des spinners sur les boutons
+        function setButtonLoading(btn, loading) {
+            if (!btn) return;
+            btn.classList.toggle('loading', loading);
+            btn.disabled = loading;
+        }
+
+        // Gestion des tabs
+        function switchTab(tabName) {
+            // Mise à jour des tabs
+            document.querySelectorAll('.controls-tab').forEach(tab => {
+                const isActive = tab.dataset.tab === tabName;
+                tab.classList.toggle('active', isActive);
+                tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            });
+
+            // Mise à jour des panneaux
+            document.querySelectorAll('.controls-panel').forEach(panel => {
+                panel.classList.toggle('active', panel.id === 'panel-' + tabName);
+            });
+        }
+
+        // Met à jour le style visuel des cases à cocher réseau
+        function updateNetworkCheck(checkbox, labelId) {
+            const label = document.getElementById(labelId);
+            if (label) {
+                label.classList.toggle('checked', checkbox.checked);
+            }
+        }
+
+        // Récupère le réseau sélectionné
+        function getSelectedNetwork() {
+            const twitter = document.getElementById('netTwitter').checked;
+            const facebook = document.getElementById('netFacebook').checked;
+            const instagram = document.getElementById('netInstagram').checked;
+
+            if (twitter && facebook && instagram) return 'all';
+            if (twitter && facebook) return 'both';
+            if (twitter && instagram) return 'both';
+            if (twitter) return 'twitter';
+            if (facebook) return 'facebook';
+            if (instagram) return 'instagram';
+            return null;
+        }
+
+        // Affiche le skeleton loading
+        function showSkeleton() {
+            const skeleton = document.getElementById('skeleton');
+            const mainNews = document.getElementById('mainNews');
+            if (skeleton) skeleton.classList.add('active');
+            if (mainNews) mainNews.style.display = 'none';
+        }
+
+        function hideSkeleton() {
+            const skeleton = document.getElementById('skeleton');
+            const mainNews = document.getElementById('mainNews');
+            if (skeleton) skeleton.classList.remove('active');
+            if (mainNews) mainNews.style.display = '';
+        }
+
+        /* ═══════════════════════════════════════════
+           ACTIONS PRINCIPALES
+           ═══════════════════════════════════════════ */
         async function refreshNews() {
-            const loading = document.getElementById('loading');
-            loading.style.display = 'block';
+            const btn = document.getElementById('refreshBtn');
+            setButtonLoading(btn, true);
+            showSkeleton();
 
             try {
                 const response = await fetch('/api/refresh');
@@ -1002,13 +1758,15 @@
                     throw new Error(data.error || 'Erreur lors de la génération');
                 }
 
-                showToast('✅ Nouvelle breaking news générée !');
+                showToast('Nouvelle breaking news générée !', 'success');
                 setTimeout(() => {
                     window.location.reload();
-                }, 1500);
+                }, 1200);
             } catch (error) {
-                showToast('❌ ' + error.message, true);
-                loading.style.display = 'none';
+                showToast(error.message, 'error');
+                hideSkeleton();
+            } finally {
+                setButtonLoading(btn, false);
             }
         }
 
@@ -1025,28 +1783,24 @@
                     throw new Error(data.error || 'Erreur lors du changement de fréquence');
                 }
 
-                showToast('✅ Fréquence mise à jour : toutes les ' + interval + ' heures');
+                showToast('Fréquence mise à jour : toutes les ' + interval + ' heures', 'success');
             } catch (error) {
-                showToast('❌ ' + error.message, true);
-            }
-        }
-
-        // Met à jour le style visuel des cases à cocher réseau
-        function updateNetworkCheck(checkbox, labelId) {
-            const label = document.getElementById(labelId);
-            if (label) {
-                label.classList.toggle('checked', checkbox.checked);
+                showToast(error.message, 'error');
             }
         }
 
         // Enregistre les heures de publication planifiées
         async function saveSchedule() {
+            const btn = document.getElementById('saveScheduleBtn');
+            setButtonLoading(btn, true);
+
             const t1 = document.getElementById('scheduleTime1').value;
             const t2 = document.getElementById('scheduleTime2').value;
             const times = [t1, t2].filter(t => t && t.length > 0);
 
             if (times.length === 0) {
-                showToast('❌ Sélectionnez au moins une heure de publication', true);
+                showToast('Sélectionnez au moins une heure de publication', 'error');
+                setButtonLoading(btn, false);
                 return;
             }
 
@@ -1062,37 +1816,24 @@
                     throw new Error(data.error || 'Erreur lors de l\'enregistrement des heures');
                 }
 
-                showToast('✅ Heures de publication enregistrées : ' + data.times.join(' & ') + ' UTC');
+                showToast('Heures de publication enregistrées : ' + data.times.join(' & ') + ' UTC', 'success');
             } catch (error) {
-                showToast('❌ ' + error.message, true);
+                showToast(error.message, 'error');
+            } finally {
+                setButtonLoading(btn, false);
             }
         }
 
-        // Récupère le réseau sélectionné (twitter, facebook, instagram, both, all)
-        function getSelectedNetwork() {
-            const twitter = document.getElementById('netTwitter').checked;
-            const facebook = document.getElementById('netFacebook').checked;
-            const instagram = document.getElementById('netInstagram').checked;
-
-            if (twitter && facebook && instagram) return 'all';
-            if (twitter && facebook) return 'both';
-            if (twitter && instagram) return 'both';
-            if (twitter) return 'twitter';
-            if (facebook) return 'facebook';
-            if (instagram) return 'instagram';
-            return null;
-        }
-
-        // Post minute : publie immédiatement sur le(s) réseau(x) choisi(s)
+        // Post minute : publie immédiatement
         async function postNow() {
             const network = getSelectedNetwork();
             if (!network) {
-                showToast('❌ Sélectionnez au moins un réseau (Twitter ou Facebook)', true);
+                showToast('Sélectionnez au moins un réseau (Twitter ou Facebook)', 'error');
                 return;
             }
 
-            const loading = document.getElementById('loading');
-            if (loading) loading.style.display = 'block';
+            const btn = document.getElementById('postNowBtn');
+            setButtonLoading(btn, true);
 
             try {
                 const response = await fetch('/api/tweet-now', {
@@ -1106,25 +1847,21 @@
                     throw new Error(data.error || 'Erreur lors de la publication');
                 }
 
-                // Afficher la simulation visuelle
                 currentTweetData = data;
                 showTweetPreview(data.tweet_preview);
             } catch (error) {
-                showToast('❌ ' + error.message, true);
+                showToast(error.message, 'error');
             } finally {
-                if (loading) loading.style.display = 'none';
+                setButtonLoading(btn, false);
             }
         }
 
         async function connectTwitter() {
             const btn = document.getElementById('twitterBtn');
+            setButtonLoading(btn, true);
 
             // Ouvre la page Twitter dans un nouvel onglet
-            window.open('https://twitter.com', '_blank');
-
-            // Vérifie la connexion en arrière-plan
-            btn.disabled = true;
-            btn.textContent = '⏳ Vérification…';
+            window.open('https://twitter.com', '_blank', 'noopener');
 
             try {
                 const response = await fetch('/api/twitter/connect', {
@@ -1136,22 +1873,19 @@
                     throw new Error(data.error || 'Erreur lors de la connexion');
                 }
 
-                btn.textContent = '✅ Twitter connecté';
-                showToast('✅ ' + data.message);
+                btn.innerHTML = '<span class="spinner" aria-hidden="true"></span>✅ Twitter connecté';
+                showToast(data.message, 'success');
             } catch (error) {
-                btn.textContent = '🔗 Connecter Twitter';
-                showToast('❌ ' + error.message, true);
+                btn.innerHTML = '<span class="spinner" aria-hidden="true"></span>🔗 Connecter Twitter';
+                showToast(error.message, 'error');
             } finally {
-                btn.disabled = false;
+                setButtonLoading(btn, false);
             }
         }
 
         async function connectFacebook() {
             const btn = document.getElementById('facebookBtn');
-
-            // Vérifie la connexion en arrière-plan
-            btn.disabled = true;
-            btn.textContent = '⏳ Vérification…';
+            setButtonLoading(btn, true);
 
             try {
                 const response = await fetch('/api/facebook/connect', {
@@ -1170,21 +1904,20 @@
                         message += ' (' + data.page_fans + ' fans)';
                     }
                 }
-                btn.textContent = '✅ Facebook connecté';
-                showToast('✅ ' + message);
+                btn.innerHTML = '<span class="spinner" aria-hidden="true"></span>✅ Facebook connecté';
+                showToast(message, 'success');
             } catch (error) {
-                btn.textContent = '🔗 Connecter Facebook';
-                showToast('❌ ' + error.message, true);
+                btn.innerHTML = '<span class="spinner" aria-hidden="true"></span>🔗 Connecter Facebook';
+                showToast(error.message, 'error');
             } finally {
-                btn.disabled = false;
+                setButtonLoading(btn, false);
             }
         }
 
-        // Diagnostic complet du token Facebook (validité + permissions)
+        // Diagnostic complet du token Facebook
         async function diagnosticFacebook() {
             const btn = document.getElementById('facebookDiagBtn');
-            btn.disabled = true;
-            btn.textContent = '⏳ Diagnostic…';
+            setButtonLoading(btn, true);
 
             try {
                 const response = await fetch('/api/facebook/diagnostic');
@@ -1203,6 +1936,7 @@
                         lines.push('Erreur : ' + info.error_message);
                     }
                     lines.push('→ Générez un nouveau token : https://developers.facebook.com/tools/access-token/');
+                    showToast(lines.join('\n'), 'error', 8000);
                 } else {
                     lines.push('✅ Token VALIDE');
                     if (info.type) lines.push('Type : ' + info.type);
@@ -1213,17 +1947,16 @@
                     if (info.missing_scopes && info.missing_scopes.length > 0) {
                         lines.push('❌ Permissions manquantes : ' + info.missing_scopes.join(', '));
                         lines.push('→ Requises : pages_read_engagement, pages_manage_posts');
+                        showToast(lines.join('\n'), 'warning', 8000);
                     } else {
                         lines.push('✅ Permissions OK');
+                        showToast(lines.join('\n'), 'success', 6000);
                     }
                 }
-
-                showToast(lines.join('\n'), !info.is_valid);
             } catch (error) {
-                showToast('❌ ' + error.message, true);
+                showToast(error.message, 'error');
             } finally {
-                btn.disabled = false;
-                btn.textContent = '🔍 Diagnostic Facebook';
+                setButtonLoading(btn, false);
             }
         }
 
@@ -1231,7 +1964,10 @@
             const card = document.getElementById('proposal-' + index);
             if (!card) return;
 
-            card.style.opacity = '0.5';
+            const btn = card.querySelector('.btn--icon');
+            card.classList.add('refreshing');
+            setButtonLoading(btn, true);
+
             try {
                 const response = await fetch('/api/refresh');
                 const data = await response.json();
@@ -1240,40 +1976,38 @@
                     throw new Error(data.error || 'Erreur lors du rafraîchissement');
                 }
 
-                // Met à jour la proposition avec la nouvelle news
                 if (data.secondary_proposals && data.secondary_proposals[index - 1]) {
                     const proposal = data.secondary_proposals[index - 1];
-                    card.querySelector('h4').textContent = proposal.title;
-                    card.querySelector('.proposal-meta span').textContent = '📰 ' + proposal.source;
-                    card.querySelector('.proposal-text').textContent = proposal.breaking_text;
-                    card.querySelector('.proposal-actions a').href = proposal.url;
-                    showToast('✅ Proposition ' + index + ' rafraîchie !');
+                    card.querySelector('.proposal-card__title').textContent = proposal.title;
+                    card.querySelector('.proposal-card__meta span').textContent = '📰 ' + proposal.source;
+                    card.querySelector('.proposal-card__text').textContent = proposal.breaking_text;
+                    card.querySelector('.proposal-card__actions a').href = proposal.url;
+                    showToast('Proposition ' + index + ' rafraîchie !', 'success');
                 } else {
                     throw new Error('Aucune nouvelle proposition disponible');
                 }
             } catch (error) {
-                showToast('❌ ' + error.message, true);
+                showToast(error.message, 'error');
             } finally {
-                card.style.opacity = '1';
+                card.classList.remove('refreshing');
+                setButtonLoading(btn, false);
             }
         }
 
         async function tweetProposal(index) {
-            // Utilise la proposition secondaire pour le tweet
             const card = document.getElementById('proposal-' + index);
             if (!card) return;
 
-            const title = card.querySelector('h4').textContent;
-            const text = card.querySelector('.proposal-text').textContent;
-            const url = card.querySelector('.proposal-actions a').href;
+            const title = card.querySelector('.proposal-card__title').textContent;
+            const text = card.querySelector('.proposal-card__text').textContent;
+            const url = card.querySelector('.proposal-card__actions a').href;
 
-            // Affiche la simulation du tweet
             currentTweetData = {
                 tweet_preview: {
                     text: text,
                     title: title,
                     url: url,
-                    source: card.querySelector('.proposal-meta span').textContent.replace('📰 ', ''),
+                    source: card.querySelector('.proposal-card__meta span').textContent.replace('📰 ', ''),
                     published_at: new Date().toISOString(),
                     character_count: text.length
                 },
@@ -1283,8 +2017,8 @@
         }
 
         async function tweetNow() {
-            const loading = document.getElementById('loading');
-            if (loading) loading.style.display = 'block';
+            const btn = document.getElementById('tweetNowBtn');
+            setButtonLoading(btn, true);
 
             try {
                 const response = await fetch('/api/tweet-now', {
@@ -1296,16 +2030,18 @@
                     throw new Error(data.error || 'Erreur lors de la génération du tweet');
                 }
 
-                // Afficher la simulation visuelle du tweet
                 currentTweetData = data;
                 showTweetPreview(data.tweet_preview);
             } catch (error) {
-                showToast('❌ ' + error.message, true);
+                showToast(error.message, 'error');
             } finally {
-                if (loading) loading.style.display = 'none';
+                setButtonLoading(btn, false);
             }
         }
 
+        /* ═══════════════════════════════════════════
+           MODAL TWEET
+           ═══════════════════════════════════════════ */
         function showTweetPreview(preview) {
             const modal = document.getElementById('tweetModal');
             const body = document.getElementById('tweetBody');
@@ -1318,7 +2054,7 @@
             // Remplacer les URLs par des liens cliquables
             let text = preview.text;
             const urlRegex = /(https?:\/\/[^\s]+)/g;
-            text = text.replace(urlRegex, '<a href="$1" target="_blank">$1</a>');
+            text = text.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
 
             body.innerHTML = text;
             cardTitle.textContent = preview.title;
@@ -1327,7 +2063,7 @@
             // Compteur de caractères
             const count = preview.character_count;
             charCount.textContent = count + ' caractères';
-            charCount.className = 'tweet-char-count';
+            charCount.className = 'tweet-preview__char-count';
             if (count > 240) {
                 charCount.classList.add('warning');
             }
@@ -1336,22 +2072,24 @@
             }
 
             // Statut de publication
-            status.className = 'tweet-status';
+            status.className = 'tweet-preview__status';
             status.style.display = 'none';
             if (currentTweetData.dry_run) {
                 status.textContent = '🧪 Mode DRY-RUN : le tweet ne sera PAS publié réellement sur Twitter.';
-                status.className = 'tweet-status dry-run';
+                status.className = 'tweet-preview__status dry-run';
                 status.style.display = 'block';
-                publishBtn.textContent = 'Simuler la publication';
+                publishBtn.innerHTML = '<span class="spinner" aria-hidden="true"></span>Simuler la publication';
             } else {
-                publishBtn.textContent = 'Publier le tweet';
+                publishBtn.innerHTML = '<span class="spinner" aria-hidden="true"></span>Publier le tweet';
             }
 
             modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
         }
 
         function closeTweetModal() {
             document.getElementById('tweetModal').classList.remove('active');
+            document.body.style.overflow = '';
             currentTweetData = null;
         }
 
@@ -1360,24 +2098,23 @@
 
             const status = document.getElementById('tweetStatus');
             const publishBtn = document.getElementById('publishBtn');
-            publishBtn.disabled = true;
-            publishBtn.textContent = 'Publication en cours…';
+            setButtonLoading(publishBtn, true);
 
             try {
                 // Si dry-run, on simule juste la publication
                 if (currentTweetData.dry_run) {
                     setTimeout(() => {
                         status.textContent = '✅ Tweet simulé avec succès (mode DRY-RUN) — aucun tweet réel envoyé.';
-                        status.className = 'tweet-status success';
+                        status.className = 'tweet-preview__status success';
                         status.style.display = 'block';
-                        publishBtn.disabled = false;
-                        publishBtn.textContent = 'Simuler la publication';
-                        showToast('✅ Tweet simulé (DRY-RUN)');
+                        setButtonLoading(publishBtn, false);
+                        publishBtn.innerHTML = '<span class="spinner" aria-hidden="true"></span>Simuler la publication';
+                        showToast('Tweet simulé (DRY-RUN)', 'info');
                     }, 1500);
                     return;
                 }
 
-                // Publication réelle via l'API (avec le réseau sélectionné)
+                // Publication réelle via l'API
                 const network = currentTweetData.network || 'both';
                 const response = await fetch('/api/tweet-now', {
                     method: 'POST',
@@ -1420,26 +2157,29 @@
 
                 if (anySuccess) {
                     status.textContent = '✅ Publication réussie : ' + parts.join(' · ');
-                    status.className = 'tweet-status success';
+                    status.className = 'tweet-preview__status success';
                     status.style.display = 'block';
-                    showToast('✅ ' + parts.join(' · '));
+                    showToast(parts.join(' · '), 'success');
                 } else {
                     status.textContent = '⚠️ Publication échouée : ' + parts.join(' · ');
-                    status.className = 'tweet-status error';
+                    status.className = 'tweet-preview__status error';
                     status.style.display = 'block';
-                    showToast('❌ Échec de la publication', true);
+                    showToast('Échec de la publication', 'error');
                 }
             } catch (error) {
                 status.textContent = '❌ ' + error.message;
-                status.className = 'tweet-status error';
+                status.className = 'tweet-preview__status error';
                 status.style.display = 'block';
-                showToast('❌ ' + error.message, true);
+                showToast(error.message, 'error');
             } finally {
-                publishBtn.disabled = false;
-                publishBtn.textContent = 'Publier le tweet';
+                setButtonLoading(publishBtn, false);
+                publishBtn.innerHTML = '<span class="spinner" aria-hidden="true"></span>Publier le tweet';
             }
         }
 
+        /* ═══════════════════════════════════════════
+           GESTION DES ÉVÉNEMENTS
+           ═══════════════════════════════════════════ */
         // Fermer le modal en cliquant en dehors
         document.getElementById('tweetModal').addEventListener('click', function(e) {
             if (e.target === this) {
@@ -1447,14 +2187,45 @@
             }
         });
 
-        // Auto-refresh toutes les 2 minutes pour vérifier les nouvelles news
+        // Fermer le modal avec la touche Échap
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeTweetModal();
+            }
+        });
+
+        // Event listeners pour les propositions (rafraîchir et tweeter)
+        document.querySelectorAll('.proposal-refresh-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const card = this.closest('.proposal-card');
+                if (card) {
+                    refreshProposal(parseInt(card.dataset.index));
+                }
+            });
+        });
+
+        document.querySelectorAll('.proposal-tweet-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const card = this.closest('.proposal-card');
+                if (card) {
+                    tweetProposal(parseInt(card.dataset.index));
+                }
+            });
+        });
+
+        // Auto-refresh intelligent : compare le hash du titre au lieu de recharger
+        let lastTitleHash = null;
+        const currentTitle = document.querySelector('.news-card__title');
+        if (currentTitle) {
+            lastTitleHash = currentTitle.textContent.trim();
+        }
+
         setInterval(() => {
             fetch('/api/latest')
                 .then(response => response.json())
                 .then(data => {
-                    if (data && data.id) {
-                        const currentTitle = document.querySelector('.news-card h2');
-                        if (currentTitle && currentTitle.textContent !== data.title) {
+                    if (data && data.title) {
+                        if (lastTitleHash && lastTitleHash !== data.title.trim()) {
                             window.location.reload();
                         }
                     }
