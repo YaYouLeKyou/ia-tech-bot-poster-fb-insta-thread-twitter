@@ -6,6 +6,7 @@ Orchestrateur principal :
   - Scan des flux RSS IA & Tech
   - Génération d'une breaking news AI
   - Publication automatique sur Twitter/X (API V2)
+  - Publication automatique sur Facebook + Instagram (Meta Graph API)
   - Affichage sur une page web (Flask)
 
 Planification : 2 tweets/jour (défaut 08:30 & 17:30 UTC)
@@ -94,10 +95,10 @@ def publish_news_facebook(news: dict) -> bool:
         return False
 
     # Si Facebook n'est pas configuré, on log simplement
-    if not config.META_ACCESS_TOKEN or not config.FACEBOOK_PAGE_ID:
+    if not config.FB_PAGE_ACCESS_TOKEN or not config.FACEBOOK_PAGE_ID:
         logger.warning(
             "Facebook non configuré — post non publié. "
-            "Renseignez META_ACCESS_TOKEN et FACEBOOK_PAGE_ID dans .env"
+            "Renseignez FB_PAGE_ACCESS_TOKEN et FACEBOOK_PAGE_ID dans .env"
         )
         return False
 
@@ -122,10 +123,50 @@ def publish_news_facebook(news: dict) -> bool:
 
 
 # ─────────────────────────────────────────────────────────────
+# Publication d'un post sur Instagram
+# ─────────────────────────────────────────────────────────────
+def publish_news_instagram(news: dict) -> bool:
+    """
+    Publie la breaking news générée sur Instagram (ou simule en dry-run).
+
+    :param news: dict avec breaking_text, title, url
+    :return: True si publié (ou simulé), False sinon
+    """
+    if not news or not news.get("breaking_text"):
+        logger.warning("Aucun texte de post à publier sur Instagram")
+        return False
+
+    # Si Instagram n'est pas configuré, on log simplement
+    if not config.FB_PAGE_ACCESS_TOKEN or not config.INSTAGRAM_ACCOUNT_ID:
+        logger.warning(
+            "Instagram non configuré — post non publié. "
+            "Renseignez FB_PAGE_ACCESS_TOKEN et INSTAGRAM_ACCOUNT_ID dans .env"
+        )
+        return False
+
+    try:
+        facebook = facebook_client.FacebookClient()
+        if not facebook.configure():
+            logger.error("Échec de la configuration Facebook/Instagram")
+            return False
+
+        published = facebook.post_to_instagram(message=news["breaking_text"])
+        if published:
+            logger.info("✅ Post Instagram publié : %s", news["title"][:60])
+        else:
+            logger.error("❌ Échec de la publication du post Instagram")
+        return published
+
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Erreur lors de la publication Instagram : %s", exc)
+        return False
+
+
+# ─────────────────────────────────────────────────────────────
 # Génération + publication d'une breaking news
 # ─────────────────────────────────────────────────────────────
 def generate_news_job() -> None:
-    """Génère une nouvelle breaking news et la publie sur Twitter + Facebook."""
+    """Génère une nouvelle breaking news et la publie sur Twitter + Facebook + Instagram."""
     logger.info("=== Génération planifiée d'une breaking news ===")
     news = news_service.generate_breaking_news()
     if news:
@@ -134,6 +175,8 @@ def generate_news_job() -> None:
         publish_news_tweet(news)
         # Publication sur Facebook (respecte DRY_RUN via facebook_client)
         publish_news_facebook(news)
+        # Publication sur Instagram (respecte DRY_RUN via facebook_client)
+        publish_news_instagram(news)
     else:
         logger.warning("⚠️  Échec de la génération de la breaking news")
 

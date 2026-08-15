@@ -7,6 +7,7 @@ chacun, et les stocke en base pour affichage sur la page web.
 """
 
 import logging
+import threading
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -20,6 +21,11 @@ logger = logging.getLogger(__name__)
 # Nombre de propositions à générer (1 principale + 2 secondaires)
 NUM_PROPOSALS = 3
 
+# Verrou pour empêcher l'exécution concurrente de generate_breaking_news().
+# Sans cela, un appel via /api/tweet-now peut se superposer à un job planifié,
+# entraînant des scans RSS parallèles et des doublons dans la base.
+_breaking_news_lock = threading.Lock()
+
 
 def generate_breaking_news() -> Optional[dict]:
     """
@@ -29,84 +35,95 @@ def generate_breaking_news() -> Optional[dict]:
     """
     logger.info("=== Génération d'une breaking news AI ===")
 
-    # 1. Récupération des nouveaux articles RSS (non encore traités)
-    articles = rss_parser.fetch_new_articles(max_items=config.MAX_ARTICLES_TO_PROCESS)
-
-    if not articles:
-        logger.warning("Aucun nouvel article récupéré depuis les flux RSS.")
+    # Empêche l'exécution concurrente (superposition job planifié + API)
+    if not _breaking_news_lock.acquire(blocking=False):
+        logger.warning(
+            "Génération de breaking news déjà en cours — appel ignoré. "
+            "Attendez que le cycle précédent se termine."
+        )
         return None
 
-    # 2. Sélection des 3 meilleurs articles (les plus récents)
-    best_articles = articles[:NUM_PROPOSALS]
-    logger.info(
-        "Articles sélectionnés : %d (le plus récent : « %s »)",
-        len(best_articles),
-        best_articles[0].title[:60],
-    )
+    try:
+        # 1. Récupération des nouveaux articles RSS (non encore traités)
+        articles = rss_parser.fetch_new_articles(max_items=config.MAX_ARTICLES_TO_PROCESS)
 
-    # 3. Génération des résumés "breaking news" par l'IA pour chaque article
-    proposals = []
-    for i, article in enumerate(best_articles):
-        breaking_text = ai_generator.generate_tweet(
-            title=article.title,
-            url=article.url,
-            source=article.source,
-            summary=article.summary,
+        if not articles:
+            logger.warning("Aucun nouvel article récupéré depuis les flux RSS.")
+            return None
+
+        # 2. Sélection des 3 meilleurs articles (les plus récents)
+        best_articles = articles[:NUM_PROPOSALS]
+        logger.info(
+            "Articles sélectionnés : %d (le plus récent : « %s »)",
+            len(best_articles),
+            best_articles[0].title[:60],
         )
 
-        if not breaking_text:
-            logger.warning("Échec de la génération IA pour la proposition %d", i + 1)
-            # Marque l'article comme traité pour ne pas bloquer indéfiniment
-            database.mark_article_processed(
-                url=article.url,
+        # 3. Génération des résumés "breaking news" par l'IA pour chaque article
+        proposals = []
+        for i, article in enumerate(best_articles):
+            breaking_text = ai_generator.generate_tweet(
                 title=article.title,
+                url=article.url,
                 source=article.source,
-                tweet_text="",
+                summary=article.summary,
             )
-            continue
 
-        proposals.append({
-            "title": article.title,
-            "url": article.url,
-            "source": article.source,
-            "summary": article.summary,
-            "breaking_text": breaking_text,
-        })
+            if not breaking_text:
+                logger.warning("Échec de la génération IA pour la proposition %d", i + 1)
+                # Marque l'article comme traité pour ne pas bloquer indéfiniment
+                database.mark_article_processed(
+                    url=article.url,
+                    title=article.title,
+                    source=article.source,
+                    tweet_text="",
+                )
+                continue
 
-    if not proposals:
-        logger.error("Aucune proposition générée par l'IA.")
-        return None
+            proposals.append({
+                "title": article.title,
+                "url": article.url,
+                "source": article.source,
+                "summary": article.summary,
+                "breaking_text": breaking_text,
+            })
 
-    # 4. Construction de l'objet news (principale + secondaires)
-    now = datetime.now(timezone.utc).isoformat()
-    news = {
-        "title": proposals[0]["title"],
-        "url": proposals[0]["url"],
-        "source": proposals[0]["source"],
-        "summary": proposals[0]["summary"],
-        "breaking_text": proposals[0]["breaking_text"],
-        "published_at": now,
-        "secondary_proposals": proposals[1:],
-    }
+        if not proposals:
+            logger.error("Aucune proposition générée par l'IA.")
+            return None
 
-    # 5. Stockage en base
-    database.save_breaking_news(news)
+        # 4. Construction de l'objet news (principale + secondaires)
+        now = datetime.now(timezone.utc).isoformat()
+        news = {
+            "title": proposals[0]["title"],
+            "url": proposals[0]["url"],
+            "source": proposals[0]["source"],
+            "summary": proposals[0]["summary"],
+            "breaking_text": proposals[0]["breaking_text"],
+            "published_at": now,
+            "secondary_proposals": proposals[1:],
+        }
 
-    # 6. Marque tous les articles traités comme "déjà publiés" (anti-doublons)
-    for proposal in proposals:
-        database.mark_article_processed(
-            url=proposal["url"],
-            title=proposal["title"],
-            source=proposal["source"],
-            tweet_text=proposal["breaking_text"],
+        # 5. Stockage en base
+        database.save_breaking_news(news)
+
+        # 6. Marque tous les articles traités comme "déjà publiés" (anti-doublons)
+        for proposal in proposals:
+            database.mark_article_processed(
+                url=proposal["url"],
+                title=proposal["title"],
+                source=proposal["source"],
+                tweet_text=proposal["breaking_text"],
+            )
+
+        logger.info(
+            "Breaking news générée et stockée : %s (+ %d propositions secondaires)",
+            news["title"][:60],
+            len(news["secondary_proposals"]),
         )
-
-    logger.info(
-        "Breaking news générée et stockée : %s (+ %d propositions secondaires)",
-        news["title"][:60],
-        len(news["secondary_proposals"]),
-    )
-    return news
+        return news
+    finally:
+        _breaking_news_lock.release()
 
 
 def get_latest_news() -> Optional[dict]:

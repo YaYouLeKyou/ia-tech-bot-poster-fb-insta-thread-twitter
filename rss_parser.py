@@ -6,15 +6,23 @@ des flux configurés dans `config.RSS_FEEDS`.
 """
 
 import logging
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import List, Optional
 
 import feedparser
+import requests
 
 import config
 
 logger = logging.getLogger(__name__)
+
+# Timeout et retry pour les requêtes RSS
+_FEED_TIMEOUT = 20  # secondes
+_FEED_MAX_RETRIES = 3
+_FEED_RETRY_BACKOFF = 2  # multiplicateur exponentiel: 1s, 2s, 4s
+_FEED_USER_AGENT = "Mozilla/5.0 (compatible; NewsBot-IA/1.0; +https://agent-twitter.local)"
 
 
 @dataclass
@@ -59,6 +67,44 @@ def _clean_summary(raw_summary: str) -> str:
     return text[:300]
 
 
+def _fetch_feed_content(feed_url: str) -> Optional[str]:
+    """
+    Récupère le contenu XML d'un flux RSS avec timeout et retry.
+
+    :param feed_url: URL du flux RSS
+    :return: Contenu XML brut, ou None si toutes les tentatives échouent
+    """
+    headers = {"User-Agent": _FEED_USER_AGENT}
+    for attempt in range(1, _FEED_MAX_RETRIES + 1):
+        try:
+            response = requests.get(
+                feed_url,
+                timeout=_FEED_TIMEOUT,
+                headers=headers,
+            )
+            response.raise_for_status()
+            return response.text
+        except (requests.ConnectionError, requests.Timeout, requests.HTTPError) as exc:
+            if attempt < _FEED_MAX_RETRIES:
+                wait = _FEED_RETRY_BACKOFF ** (attempt - 1)
+                logger.warning(
+                    "Tentative %d/%d échouée pour %s : %s — nouvelle tentative dans %ds",
+                    attempt,
+                    _FEED_MAX_RETRIES,
+                    feed_url,
+                    exc,
+                    wait,
+                )
+                time.sleep(wait)
+            else:
+                logger.error(
+                    "Échec définitif du flux RSS après %d tentatives : %s",
+                    _FEED_MAX_RETRIES,
+                    feed_url,
+                )
+                return None
+
+
 def fetch_articles(max_items: int = None) -> List[Article]:
     """
     Récupère les derniers articles de tous les flux RSS configurés.
@@ -72,7 +118,13 @@ def fetch_articles(max_items: int = None) -> List[Article]:
     for feed_url in config.RSS_FEEDS:
         try:
             logger.info("Scan du flux RSS : %s", feed_url)
-            feed = feedparser.parse(feed_url)
+
+            content = _fetch_feed_content(feed_url)
+            if content is None:
+                logger.warning("Flux inaccessible ou vide : %s — aucun contenu récupéré", feed_url)
+                continue
+
+            feed = feedparser.parse(content)
 
             if feed.bozo and not feed.entries:
                 logger.warning(

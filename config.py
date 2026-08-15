@@ -33,7 +33,9 @@ LLM_MODEL = os.getenv("LLM_MODEL", "deepseek-chat")
 # ─────────────────────────────────────────────────────────────
 # API Facebook (Meta Graph API)
 # ─────────────────────────────────────────────────────────────
-META_ACCESS_TOKEN = os.getenv("META_ACCESS_TOKEN", "")
+# Nouveau nom de variable : FB_PAGE_ACCESS_TOKEN
+# (avec rétrocompatibilité : META_ACCESS_TOKEN si FB_PAGE_ACCESS_TOKEN absent)
+FB_PAGE_ACCESS_TOKEN = os.getenv("FB_PAGE_ACCESS_TOKEN", os.getenv("META_ACCESS_TOKEN", ""))
 FACEBOOK_PAGE_ID = os.getenv("FACEBOOK_PAGE_ID", "")
 INSTAGRAM_ACCOUNT_ID = os.getenv("INSTAGRAM_ACCOUNT_ID", "")
 

@@ -54,7 +54,7 @@ def _scheduled_publish() -> None:
         logger.warning("Twitter non configuré — tweet planifié non publié")
 
     # Publication Facebook
-    if config.META_ACCESS_TOKEN and config.FACEBOOK_PAGE_ID:
+    if config.FB_PAGE_ACCESS_TOKEN and config.FACEBOOK_PAGE_ID:
         try:
             facebook = facebook_client.FacebookClient()
             if facebook.configure():
@@ -63,6 +63,17 @@ def _scheduled_publish() -> None:
             logger.error("Erreur publication Facebook (planifiée) : %s", exc)
     else:
         logger.warning("Facebook non configuré — post planifié non publié")
+
+    # Publication Instagram
+    if config.FB_PAGE_ACCESS_TOKEN and config.INSTAGRAM_ACCOUNT_ID:
+        try:
+            facebook = facebook_client.FacebookClient()
+            if facebook.configure():
+                facebook.post_to_instagram(message=news["breaking_text"])
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Erreur publication Instagram (planifiée) : %s", exc)
+    else:
+        logger.warning("Instagram non configuré — post planifié non publié")
 
 
 def _reschedule() -> None:
@@ -102,7 +113,7 @@ def index():
 
     # Vérifie si Twitter et Facebook sont configurés
     twitter_configured = bool(config.TWITTER_API_KEY and config.TWITTER_API_SECRET)
-    facebook_configured = bool(config.META_ACCESS_TOKEN and config.FACEBOOK_PAGE_ID)
+    facebook_configured = bool(config.FB_PAGE_ACCESS_TOKEN and config.FACEBOOK_PAGE_ID)
 
     return render_template(
         "index.html",
@@ -199,9 +210,9 @@ def api_tweet_now():
     Gère automatiquement le mode gratuit (crédits épuisés).
     """
     data = request.get_json(silent=True) or {}
-    network = data.get("network", "both")
-    if network not in ("twitter", "facebook", "both"):
-        network = "both"
+    network = data.get("network", "all")
+    if network not in ("twitter", "facebook", "instagram", "both", "all"):
+        network = "all"
 
     # 1. Génération de la breaking news
     news = news_service.generate_breaking_news()
@@ -237,8 +248,9 @@ def api_tweet_now():
 
     # 4. Publication sur Facebook (si demandé, configuré et pas en dry-run)
     facebook_published = False
-    if network in ("facebook", "both"):
-        if not config.DRY_RUN and config.META_ACCESS_TOKEN and config.FACEBOOK_PAGE_ID:
+    facebook_error = None
+    if network in ("facebook", "both", "all"):
+        if not config.DRY_RUN and config.FB_PAGE_ACCESS_TOKEN and config.FACEBOOK_PAGE_ID:
             try:
                 facebook = facebook_client.FacebookClient()
                 if facebook.configure():
@@ -247,10 +259,49 @@ def api_tweet_now():
                         link=news.get("url", ""),
                     )
                     logger.info("Post Facebook publié : %s", facebook_published)
+                    if not facebook_published:
+                        facebook_error = "Échec de la publication Facebook — voir les logs serveur"
+                else:
+                    facebook_error = (
+                        "Token Facebook/Instagram expiré ou invalide. "
+                        "Générez un nouveau Page Access Token sur "
+                        "https://developers.facebook.com/tools/access-token/ "
+                        "avec les permissions pages_read_engagement et pages_manage_posts, "
+                        "puis redémarrez l'application."
+                    )
             except Exception as exc:  # noqa: BLE001
                 logger.error("Erreur lors de la publication Facebook : %s", exc)
+                facebook_error = str(exc)
         else:
             logger.info("Mode dry-run ou Facebook non configuré — post non publié réellement")
+
+    # 5. Publication sur Instagram (si demandé, configuré et pas en dry-run)
+    instagram_published = False
+    instagram_error = None
+    if network in ("instagram", "both", "all"):
+        if not config.DRY_RUN and config.FB_PAGE_ACCESS_TOKEN and config.INSTAGRAM_ACCOUNT_ID:
+            try:
+                facebook = facebook_client.FacebookClient()
+                if facebook.configure():
+                    instagram_published = facebook.post_to_instagram(
+                        message=news["breaking_text"],
+                    )
+                    logger.info("Post Instagram publié : %s", instagram_published)
+                    if not instagram_published:
+                        instagram_error = "Échec de la publication Instagram — voir les logs serveur"
+                else:
+                    instagram_error = (
+                        "Token Instagram expiré ou invalide. "
+                        "Générez un nouveau Page Access Token sur "
+                        "https://developers.facebook.com/tools/access-token/ "
+                        "avec les permissions pages_read_engagement et pages_manage_posts, "
+                        "puis redémarrez l'application."
+                    )
+            except Exception as exc:  # noqa: BLE001
+                logger.error("Erreur lors de la publication Instagram : %s", exc)
+                instagram_error = str(exc)
+        else:
+            logger.info("Mode dry-run ou Instagram non configuré — post non publié réellement")
 
     return jsonify({
         "success": True,
@@ -258,6 +309,9 @@ def api_tweet_now():
         "tweet_preview": tweet_preview,
         "published": published,
         "facebook_published": facebook_published,
+        "facebook_error": facebook_error,
+        "instagram_published": instagram_published,
+        "instagram_error": instagram_error,
         "network": network,
         "dry_run": config.DRY_RUN,
         "free_mode": free_mode,
@@ -277,7 +331,7 @@ def api_twitter_status():
 @app.route("/api/facebook/status")
 def api_facebook_status():
     """API : vérifie si Facebook est configuré."""
-    configured = bool(config.META_ACCESS_TOKEN and config.FACEBOOK_PAGE_ID)
+    configured = bool(config.FB_PAGE_ACCESS_TOKEN and config.FACEBOOK_PAGE_ID)
     return jsonify({
         "configured": configured,
         "dry_run": config.DRY_RUN,
@@ -290,10 +344,10 @@ def api_facebook_connect():
     API : vérifie la connexion Facebook en testant la configuration.
     Retourne l'état de la connexion et les infos de la page.
     """
-    if not config.META_ACCESS_TOKEN or not config.FACEBOOK_PAGE_ID:
+    if not config.FB_PAGE_ACCESS_TOKEN or not config.FACEBOOK_PAGE_ID:
         return jsonify({
             "success": False,
-            "error": "Facebook n'est pas configuré. Renseignez META_ACCESS_TOKEN et FACEBOOK_PAGE_ID dans .env",
+            "error": "Facebook n'est pas configuré. Renseignez FB_PAGE_ACCESS_TOKEN et FACEBOOK_PAGE_ID dans .env",
         }), 400
 
     try:
@@ -328,10 +382,10 @@ def api_facebook_diagnostic():
     API : diagnostic complet du token Facebook.
     Vérifie la validité du token et les permissions via /debug_token.
     """
-    if not config.META_ACCESS_TOKEN:
+    if not config.FB_PAGE_ACCESS_TOKEN:
         return jsonify({
             "success": False,
-            "error": "META_ACCESS_TOKEN non configuré dans .env",
+            "error": "FB_PAGE_ACCESS_TOKEN non configuré dans .env",
         }), 400
 
     facebook = facebook_client.FacebookClient()

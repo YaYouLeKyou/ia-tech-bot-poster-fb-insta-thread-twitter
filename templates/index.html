@@ -224,6 +224,10 @@
             border-color: rgba(66, 103, 178, 0.4);
         }
 
+        .network-check.instagram-check {
+            border-color: rgba(225, 48, 108, 0.4);
+        }
+
         .network-check.checked {
             background: rgba(0, 210, 255, 0.12);
             border-color: rgba(0, 210, 255, 0.5);
@@ -808,6 +812,10 @@
                     <input type="checkbox" id="netFacebook" checked onchange="updateNetworkCheck(this, 'netFacebookLabel')">
                     📘 Facebook
                 </label>
+                <label class="network-check instagram-check" id="netInstagramLabel">
+                    <input type="checkbox" id="netInstagram" checked onchange="updateNetworkCheck(this, 'netInstagramLabel')">
+                    📸 Instagram
+                </label>
                 <button onclick="postNow()" class="btn btn-tweet">⚡ Publier maintenant</button>
                 <div class="schedule-hint">Génère une nouvelle breaking news et la publie immédiatement sur le(s) réseau(x) sélectionné(s).</div>
             </div>
@@ -1060,14 +1068,18 @@
             }
         }
 
-        // Récupère le réseau sélectionné (twitter, facebook ou both)
+        // Récupère le réseau sélectionné (twitter, facebook, instagram, both, all)
         function getSelectedNetwork() {
             const twitter = document.getElementById('netTwitter').checked;
             const facebook = document.getElementById('netFacebook').checked;
+            const instagram = document.getElementById('netInstagram').checked;
 
+            if (twitter && facebook && instagram) return 'all';
             if (twitter && facebook) return 'both';
+            if (twitter && instagram) return 'both';
             if (twitter) return 'twitter';
             if (facebook) return 'facebook';
+            if (instagram) return 'instagram';
             return null;
         }
 
@@ -1380,15 +1392,31 @@
 
                 // Construit le message de statut selon les réseaux
                 const parts = [];
-                if (network === 'twitter' || network === 'both') {
+                if (network === 'twitter' || network === 'both' || network === 'all') {
                     parts.push(data.published ? '🐦 Twitter ✅' : '🐦 Twitter ❌');
                 }
-                if (network === 'facebook' || network === 'both') {
-                    parts.push(data.facebook_published ? '📘 Facebook ✅' : '📘 Facebook ❌');
+                if (network === 'facebook' || network === 'both' || network === 'all') {
+                    if (data.facebook_published) {
+                        parts.push('📘 Facebook ✅');
+                    } else if (data.facebook_error) {
+                        parts.push('📘 Facebook ❌ — ' + data.facebook_error);
+                    } else {
+                        parts.push('📘 Facebook ❌');
+                    }
+                }
+                if (network === 'instagram' || network === 'both' || network === 'all') {
+                    if (data.instagram_published) {
+                        parts.push('📸 Instagram ✅');
+                    } else if (data.instagram_error) {
+                        parts.push('📸 Instagram ❌ — ' + data.instagram_error);
+                    } else {
+                        parts.push('📸 Instagram ❌');
+                    }
                 }
 
                 const anySuccess = (network !== 'twitter' || data.published) &&
-                                   (network !== 'facebook' || data.facebook_published);
+                                   (network !== 'facebook' || data.facebook_published) &&
+                                   (network !== 'instagram' || data.instagram_published);
 
                 if (anySuccess) {
                     status.textContent = '✅ Publication réussie : ' + parts.join(' · ');

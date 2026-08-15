@@ -61,6 +61,9 @@ Renseignez ensuite le fichier `.env` :
 | `LLM_API_KEY` | Clé DeepSeek (`sk-…`) ou OpenAI |
 | `LLM_BASE_URL` | `https://api.deepseek.com` (DeepSeek) ou `https://api.openai.com/v1` |
 | `LLM_MODEL` | `deepseek-chat` (DeepSeek) ou `gpt-4o-mini` (OpenAI) |
+| `FB_PAGE_ACCESS_TOKEN` | Page Access Token Meta (permanent, avec permissions `pages_read_engagement`, `pages_manage_posts`) |
+| `FACEBOOK_PAGE_ID` | ID de la page Facebook |
+| `INSTAGRAM_ACCOUNT_ID` | ID du compte Instagram Business (optionnel) |
 
 ### 3. Test rapide
 
@@ -152,7 +155,8 @@ Le fichier `render.yaml` configure tout automatiquement via **Blueprint** :
 
 Variables à renseigner manuellement dans le dashboard Render :
 `TWITTER_API_KEY`, `TWITTER_API_SECRET`, `TWITTER_ACCESS_TOKEN`,
-`TWITTER_ACCESS_SECRET`, `TWITTER_BEARER_TOKEN`, `LLM_API_KEY`
+`TWITTER_ACCESS_SECRET`, `TWITTER_BEARER_TOKEN`, `LLM_API_KEY`,
+`FB_PAGE_ACCESS_TOKEN`, `FACEBOOK_PAGE_ID`, `INSTAGRAM_ACCOUNT_ID`
 
 ### Option 2 — Railway
 

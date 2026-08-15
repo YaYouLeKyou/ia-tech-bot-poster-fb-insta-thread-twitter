@@ -59,3 +59,14 @@ services:
       # false = publie réellement sur Twitter (comportement normal)
       - key: DRY_RUN
         value: "false"
+
+      # ── API Facebook / Meta (Graph API) ─────────────────────
+      # Page Access Token (permanent) avec permissions :
+      #   pages_read_engagement, pages_manage_posts
+      #   instagram_content_publish (optionnel, pour Instagram)
+      - key: FB_PAGE_ACCESS_TOKEN
+        sync: false
+      - key: FACEBOOK_PAGE_ID
+        sync: false
+      - key: INSTAGRAM_ACCOUNT_ID
+        sync: false  # optionnel — lié à une page Instagram Business

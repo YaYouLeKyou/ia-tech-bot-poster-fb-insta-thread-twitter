@@ -136,10 +136,20 @@ class TwitterClient:
                 return True
 
             logger.error("Erreur Twitter API : %s", exc)
+            if hasattr(exc, "response") and exc.response is not None:
+                logger.error("  → HTTP Status : %s", exc.response.status_code)
+                try:
+                    logger.error("  → Response body : %s", exc.response.text)
+                except Exception:  # noqa: BLE001
+                    pass
+            elif hasattr(exc, "status_code"):
+                logger.error("  → Status code : %s", exc.status_code)
+            logger.error("  → Tweet (texte complet) : %s", text)
             return False
 
         except Exception as exc:  # noqa: BLE001
             logger.error("Erreur inattendue lors de la publication : %s", exc)
+            logger.error("  → Tweet (texte complet) : %s", text)
             return False
 
     def reset_credits_status(self) -> None:
