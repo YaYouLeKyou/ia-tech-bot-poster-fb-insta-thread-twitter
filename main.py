@@ -217,6 +217,24 @@ def start_web_server() -> None:
 # ─────────────────────────────────────────────────────────────
 # Point d'entrée principal
 # ─────────────────────────────────────────────────────────────
+def _generate_initial_news() -> None:
+    """Génère la première breaking news en arrière-plan (thread séparé)."""
+    try:
+        if config.TEST_ON_STARTUP:
+            logger.info("TEST_ON_STARTUP=true — exécution immédiate d'un cycle complet")
+            generate_news_job()
+        else:
+            # Génération immédiate d'une première breaking news (sans publication)
+            logger.info("Génération de la première breaking news…")
+            news = news_service.generate_breaking_news()
+            if news:
+                logger.info("✅ Breaking news initiale générée : %s", news["title"][:60])
+            else:
+                logger.warning("⚠️  Échec de la génération initiale")
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Erreur lors de la génération initiale : %s", exc)
+
+
 def main() -> None:
     """Boucle principale : planification + publication + serveur web."""
     logger.info("🚀 Démarrage de l'agent — Veille IA & Tech + Breaking News")
@@ -231,21 +249,13 @@ def main() -> None:
     # 2. Planification des breaking news
     setup_schedule()
 
-    # 3. Test au démarrage si activé
-    if config.TEST_ON_STARTUP:
-        logger.info("TEST_ON_STARTUP=true — exécution immédiate d'un cycle complet")
-        generate_news_job()
-    else:
-        # Génération immédiate d'une première breaking news (sans publication)
-        logger.info("Génération de la première breaking news…")
-        news = news_service.generate_breaking_news()
-        if news:
-            logger.info("✅ Breaking news initiale générée : %s", news["title"][:60])
-        else:
-            logger.warning("⚠️  Échec de la génération initiale")
-
-    # 4. Lancement du serveur web
+    # 3. Lancement du serveur web IMMÉDIATEMENT (avant la génération initiale)
     start_web_server()
+
+    # 4. Génération initiale en arrière-plan (thread séparé)
+    #    Le serveur web est déjà accessible pendant le scan des flux RSS
+    initial_thread = threading.Thread(target=_generate_initial_news, daemon=True)
+    initial_thread.start()
 
     # 5. Boucle infinie du worker
     logger.info("Boucle de planification active (Ctrl+C pour arrêter)…")

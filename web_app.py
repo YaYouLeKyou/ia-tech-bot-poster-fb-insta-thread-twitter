@@ -152,6 +152,13 @@ def api_refresh():
     """API JSON : force la génération d'une nouvelle breaking news."""
     news = news_service.generate_breaking_news()
     if not news:
+        # Vérifie si une génération est déjà en cours
+        latest = news_service.get_latest_news()
+        if latest:
+            return jsonify({
+                "error": "Une génération est déjà en cours. Veuillez patienter quelques instants.",
+                "latest": latest,
+            }), 409
         return jsonify({"error": "Échec de la génération"}), 500
     return jsonify(news)
 
@@ -217,6 +224,13 @@ def api_tweet_now():
     # 1. Génération de la breaking news
     news = news_service.generate_breaking_news()
     if not news:
+        # Vérifie si une génération est déjà en cours
+        latest = news_service.get_latest_news()
+        if latest:
+            return jsonify({
+                "error": "Une génération est déjà en cours. Veuillez patienter quelques instants.",
+                "latest": latest,
+            }), 409
         return jsonify({"error": "Échec de la génération de la breaking news"}), 500
 
     # 2. Simulation visuelle du tweet
