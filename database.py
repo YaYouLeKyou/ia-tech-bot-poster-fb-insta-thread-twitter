@@ -236,3 +236,77 @@ def get_breaking_news_history(limit: int = 50) -> list:
         return result
     finally:
         conn.close()
+
+
+def enforce_max_history(max_size: int) -> int:
+    """
+    Supprime les breaking news les plus anciennes si l'historique
+    dépasse la taille maximale configurée.
+
+    :param max_size: Nombre maximum d'articles à conserver
+    :return: Nombre d'articles supprimés
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.execute(
+            "SELECT COUNT(*) AS count FROM breaking_news"
+        )
+        row = cursor.fetchone()
+        current_count = row["count"] if row else 0
+
+        if current_count <= max_size:
+            return 0
+
+        excess = current_count - max_size
+        # Supprime les plus anciens (ordre croissant d'id → les premiers sont les plus anciens)
+        conn.execute(
+            "DELETE FROM breaking_news WHERE id IN ("
+            "    SELECT id FROM breaking_news ORDER BY id ASC LIMIT ?)"
+            , (excess,)
+        )
+        conn.commit()
+        logger.info("Historique élagué : %d article(s) supprimé(s) (limite: %d)", excess, max_size)
+        return excess
+    finally:
+        conn.close()
+
+
+def clear_breaking_news_history() -> int:
+    """
+    Supprime tout l'historique des breaking news.
+
+    :return: Nombre d'articles supprimés
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.execute("SELECT COUNT(*) AS count FROM breaking_news")
+        row = cursor.fetchone()
+        count = row["count"] if row else 0
+
+        conn.execute("DELETE FROM breaking_news")
+        conn.commit()
+        logger.info("Historique des breaking news vidé : %d article(s) supprimé(s)", count)
+        return count
+    finally:
+        conn.close()
+
+
+def clear_processed_articles() -> int:
+    """
+    Supprime tous les articles marqués comme traités (cache anti-doublons).
+    Utile pour forcer une régénération complète.
+
+    :return: Nombre d'articles supprimés
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.execute("SELECT COUNT(*) AS count FROM processed_articles")
+        row = cursor.fetchone()
+        count = row["count"] if row else 0
+
+        conn.execute("DELETE FROM processed_articles")
+        conn.commit()
+        logger.info("Cache des articles traités vidé : %d article(s) supprimé(s)", count)
+        return count
+    finally:
+        conn.close()

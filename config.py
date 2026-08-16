@@ -100,6 +100,13 @@ MAX_TWEET_LENGTH = 230  # < 230 caractères, limite de sécurité
 MAX_ARTICLES_TO_PROCESS = 30  # articles maximum scannés par exécution
 
 # ─────────────────────────────────────────────────────────────
+# Historique des breaking news
+# ─────────────────────────────────────────────────────────────
+# Nombre maximum d'articles conservés dans l'historique.
+# Au-delà, les plus anciens sont automatiquement supprimés.
+MAX_HISTORY_SIZE = int(os.getenv("MAX_HISTORY_SIZE", "50"))
+
+# ─────────────────────────────────────────────────────────────
 # Mode test
 # ─────────────────────────────────────────────────────────────
 TEST_ON_STARTUP = os.getenv("TEST_ON_STARTUP", "false").strip().lower() == "true"

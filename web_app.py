@@ -128,6 +128,7 @@ def index():
         facebook_configured=facebook_configured,
         dry_run=config.DRY_RUN,
         test_on_startup=config.TEST_ON_STARTUP,
+        max_history_size=config.MAX_HISTORY_SIZE,
     )
 
 
@@ -150,10 +151,38 @@ def api_history():
 @app.route("/api/refresh")
 def api_refresh():
     """API JSON : force la génération d'une nouvelle breaking news."""
-    news = news_service.generate_breaking_news()
+    news = news_service.generate_breaking_news(force=True)
     if not news:
-        return jsonify({"error": "Échec de la génération"}), 500
+        latest = news_service.get_latest_news()
+        if latest:
+            return jsonify({
+                "success": False,
+                "message": "Aucun nouvel article disponible.",
+                "latest_title": latest["title"][:50],
+            }), 409
+        return jsonify({
+            "error": "Échec de la génération d'article.",
+            "detail": "Tous les flux RSS ont été épuisés ou inaccessible.",
+        }), 404
     return jsonify(news)
+
+
+@app.route("/api/clear-history", methods=["POST"])
+def api_clear_history():
+    """API : vide l'historique des breaking news et le cache anti-doublons."""
+    removed_news = database.clear_breaking_news_history()
+    removed_processed = database.clear_processed_articles()
+    logger.info(
+        "Historique vidé : %d breaking news, %d articles traités supprimés",
+        removed_news,
+        removed_processed,
+    )
+    return jsonify({
+        "success": True,
+        "message": "Historique effacé avec succès.",
+        "removed_news": removed_news,
+        "removed_processed": removed_processed,
+    })
 
 
 @app.route("/api/interval", methods=["POST"])
@@ -166,7 +195,7 @@ def api_set_interval():
         return jsonify({"error": "Intervalle invalide"}), 400
 
     if interval not in AVAILABLE_INTERVALS:
-        return jsonify({"error": f"Intervalle non autorisé. Choisissez parmi : {AVAILABLE_INTERVALS}"}), 400
+        return jsonify({"error": f"Intervalle non autorisée. Choisissez parmi : {AVAILABLE_INTERVALS}"}), 400
 
     config.NEWS_INTERVAL_HOURS = interval
     logger.info("Fréquence de mise à jour changée : toutes les %d heures", interval)
@@ -215,9 +244,17 @@ def api_tweet_now():
         network = "all"
 
     # 1. Génération de la breaking news
-    news = news_service.generate_breaking_news()
+    news = news_service.generate_breaking_news(force=True)
     if not news:
-        return jsonify({"error": "Échec de la génération de la breaking news"}), 500
+        # Pas de nouveaux articles récupérés depuis les flux RSS
+        latest = news_service.get_latest_news()
+        if latest:
+            return jsonify({
+                "error": "Article déjà publié récemment.",
+                "detail": "La dernière breaking news a déjà été publiée. Patientez jusqu'à de nouveaux articles RSS.",
+                "latest_title": latest["title"][:50],
+            }), 409
+        return jsonify({"error": "Aucun article disponible."}), 404
 
     # 2. Simulation visuelle du tweet
     tweet_preview = {
@@ -232,7 +269,7 @@ def api_tweet_now():
     # 3. Publication sur Twitter (si demandé, configuré et pas en dry-run)
     published = False
     free_mode = False
-    if network in ("twitter", "both"):
+    if network in ("twitter", "both", "all"):
         if not config.DRY_RUN and config.TWITTER_API_KEY:
             try:
                 twitter = twitter_client.TwitterClient()

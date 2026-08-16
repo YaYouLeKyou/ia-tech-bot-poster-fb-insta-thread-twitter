@@ -33,24 +33,24 @@ GRAPH_API_URL = "https://graph.facebook.com/v19.0"
 def check_config() -> None:
     """Vérifie la présence des variables de configuration."""
     print("\n" + "=" * 60)
-    print("1️⃣  CONFIGURATION")
+    print("1 CONFIGURATION")
     print("=" * 60)
-    print(f"FB_PAGE_ACCESS_TOKEN   : {'✅ défini (' + config.FB_PAGE_ACCESS_TOKEN[:25] + '...)' if config.FB_PAGE_ACCESS_TOKEN else '❌ MANQUANT'}")
-    print(f"FACEBOOK_PAGE_ID    : {config.FACEBOOK_PAGE_ID or '❌ MANQUANT'}")
+    print(f"FB_PAGE_ACCESS_TOKEN   : {'[OK] défini (' + config.FB_PAGE_ACCESS_TOKEN[:25] + '...)' if config.FB_PAGE_ACCESS_TOKEN else '[ERROR] MANQUANT'}")
+    print(f"FACEBOOK_PAGE_ID    : {config.FACEBOOK_PAGE_ID or '[ERROR] MANQUANT'}")
     print(f"DRY_RUN             : {config.DRY_RUN}")
 
 
 def test_token_validity() -> dict:
     """Vérifie la validité du token via debug_token."""
     print("\n" + "=" * 60)
-    print("2️⃣  VALIDITÉ DU TOKEN (/debug_token)")
+    print("2 VALIDITE DU TOKEN (/debug_token)")
     print("=" * 60)
 
     facebook = facebook_client.FacebookClient()
     token_info = facebook.check_token()
 
     if not token_info:
-        print("❌ Impossible de vérifier le token (erreur réseau)")
+        print("FAIL Impossible de vérifier le token (erreur réseau)")
         return {}
 
     print(f"is_valid      : {token_info.get('is_valid')}")
@@ -68,7 +68,7 @@ def test_token_validity() -> dict:
 def test_page_matching() -> None:
     """Vérifie que le FACEBOOK_PAGE_ID correspond à la page du token."""
     print("\n" + "=" * 60)
-    print("3️⃣  CORRESPONDANCE TOKEN ↔ PAGE")
+    print("3 CORRESPONDANCE TOKEN PAGE")
     print("=" * 60)
 
     # Récupère l'ID associé au token via /me
@@ -79,7 +79,7 @@ def test_page_matching() -> None:
             timeout=30,
         )
         data = response.json()
-        print(f"GET /me → {response.status_code} : {data}")
+        print(f"GET /me -> {response.status_code} : {data}")
 
         if response.status_code == 200:
             token_entity_id = str(data.get("id"))
@@ -88,25 +88,25 @@ def test_page_matching() -> None:
             configured_page_id = str(config.FACEBOOK_PAGE_ID)
 
             if token_entity_id == configured_page_id:
-                print(f"✅ Le token appartient à la page configurée : {token_entity_name} (ID {token_entity_id})")
+                print(f"Token belongs to configured page : {token_entity_name} (ID {token_entity_id})")
             else:
-                print(f"❌ MISMATCH !")
-                print(f"   - Page du token (/me)    : {token_entity_name} (ID {token_entity_id})")
-                print(f"   - Page configurée (.env) : ID {configured_page_id}")
-                print(f"   → Corrigez FACEBOOK_PAGE_ID dans .env avec {token_entity_id}")
+                print(f"MISMATCH !")
+                print(f"   - Token page (/me)    : {token_entity_name} (ID {token_entity_id})")
+                print(f"   - Configured page (.env) : ID {configured_page_id}")
+                print(f"   -> Correct FACEBOOK_PAGE_ID in .env with {token_entity_id}")
 
         else:
             error = data.get("error", {})
-            print(f"❌ Erreur /me : {error.get('code')} — {error.get('message')}")
+            print(f"Error /me : {error.get('code')} — {error.get('message')}")
 
-    except Exception as exc:  # noqa: BLE001
-        print(f"❌ Exception : {exc}")
+    except Exception as exc:
+        print(f"Exception : {exc}")
 
 
 def test_page_info() -> None:
     """Récupère les infos de la page configurée."""
     print("\n" + "=" * 60)
-    print("4️⃣  INFOS DE LA PAGE CONFIGURÉE")
+    print("4 INFOS DE LA PAGE CONFIGUREE")
     print("=" * 60)
 
     try:
@@ -119,32 +119,32 @@ def test_page_info() -> None:
             timeout=30,
         )
         data = response.json()
-        print(f"GET /{config.FACEBOOK_PAGE_ID} → {response.status_code}")
+        print(f"GET /{config.FACEBOOK_PAGE_ID} -> {response.status_code}")
 
         if response.status_code == 200:
-            print(f"Nom    : {data.get('name')}")
+            print(f"Name    : {data.get('name')}")
             print(f"ID     : {data.get('id')}")
             print(f"Fans   : {data.get('fan_count')}")
-            print(f"Lien   : {data.get('link')}")
-            print("✅ La page est accessible avec le token")
+            print(f"Link   : {data.get('link')}")
+            print("Page is accessible with token")
         else:
             error = data.get("error", {})
-            print(f"❌ Erreur : {error.get('code')} — {error.get('message')}")
-            print("   → Le token n'a pas accès à cette page !")
-            print("   → Vérifiez que FACEBOOK_PAGE_ID est bien l'ID de la page gérée par ce token.")
+            print(f"Error : {error.get('code')} — {error.get('message')}")
+            print("   -> Token has no access to this page !")
+            print("   -> Verify FACEBOOK_PAGE_ID is the ID of the page managed by this token.")
 
-    except Exception as exc:  # noqa: BLE001
-        print(f"❌ Exception : {exc}")
+    except Exception as exc:
+        print(f"Exception : {exc}")
 
 
 def test_instagram_account() -> None:
     """Vérifie si un compte Instagram est associé à la page Facebook."""
     print("\n" + "=" * 60)
-    print("5️⃣  COMPTE INSTAGRAM ASSOCIÉ")
+    print("5 COMPTE INSTAGRAM ASSOCIE")
     print("=" * 60)
 
     if not config.INSTAGRAM_ACCOUNT_ID:
-        print("INSTAGRAM_ACCOUNT_ID : ❌ non configuré dans .env")
+        print("INSTAGRAM_ACCOUNT_ID : FAIL non configuré dans .env")
     else:
         print(f"INSTAGRAM_ACCOUNT_ID : {config.INSTAGRAM_ACCOUNT_ID}")
 
@@ -159,81 +159,81 @@ def test_instagram_account() -> None:
             timeout=30,
         )
         data = response.json()
-        print(f"GET /{config.FACEBOOK_PAGE_ID}?fields=instagram_business_account → {response.status_code}")
+        print(f"GET /{config.FACEBOOK_PAGE_ID}?fields=instagram_business_account -> {response.status_code}")
 
         if response.status_code == 200:
             ig_account = data.get("instagram_business_account")
             if ig_account:
-                print(f"✅ Compte Instagram associé : ID={ig_account.get('id')} username={ig_account.get('username')}")
+                print(f"Instagram account associated : ID={ig_account.get('id')} username={ig_account.get('username')}")
                 if not config.INSTAGRAM_ACCOUNT_ID:
-                    print(f"   → Ajoutez INSTAGRAM_ACCOUNT_ID={ig_account.get('id')} dans .env")
+                    print(f"   -> Add INSTAGRAM_ACCOUNT_ID={ig_account.get('id')} in .env")
             else:
-                print("❌ Aucun compte Instagram associé à cette page Facebook")
-                print("   → Connectez un compte Instagram à la page dans Meta Business Suite")
+                print("FAIL No Instagram account associated to this Facebook page")
+                print("   -> Connect an Instagram account to the page in Meta Business Suite")
         else:
             error = data.get("error", {})
-            print(f"❌ Erreur : {error.get('code')} — {error.get('message')}")
+            print(f"Error : {error.get('code')} — {error.get('message')}")
 
-    except Exception as exc:  # noqa: BLE001
-        print(f"❌ Exception : {exc}")
+    except Exception as exc:
+        print(f"Exception : {exc}")
 
 
 def test_post() -> None:
     """Tente une publication de test."""
     print("\n" + "=" * 60)
-    print("6️⃣  PUBLICATION DE TEST FACEBOOK")
+    print("6 PUBLICATION DE TEST FACEBOOK")
     print("=" * 60)
 
     facebook = facebook_client.FacebookClient()
     if not facebook.configure():
-        print("❌ Configuration Facebook échouée")
+        print("FAIL Configuration Facebook échouée")
         return
 
-    test_message = "🧪 Test de publication depuis l'interface de veille — ceci est un test technique."
-    print(f"Message de test : {test_message}")
-    print(f"URL de publication : {GRAPH_API_URL}/{config.FACEBOOK_PAGE_ID}/feed")
+    test_message = "Test de publication depuis l'interface de veille — ceci est un test technique."
+    print(f"Test message : {test_message}")
+    print(f"Post URL : {GRAPH_API_URL}/{config.FACEBOOK_PAGE_ID}/feed")
 
     # Publication réelle
     success = facebook.post_to_page(message=test_message)
     if success:
-        print("✅ Publication de test RÉUSSIE !")
+        print("SUCCESS Test post SUCCESS !")
     else:
-        print("❌ Publication de test ÉCHOUÉE (voir logs ci-dessus)")
+        print("FAILED Test post FAILED (see logs above)")
 
 
 def test_post_instagram() -> None:
     """Tente une publication de test sur Instagram."""
     print("\n" + "=" * 60)
-    print("7️⃣  PUBLICATION DE TEST INSTAGRAM")
+    print("7 PUBLICATION DE TEST INSTAGRAM")
     print("=" * 60)
 
     if not config.INSTAGRAM_ACCOUNT_ID:
-        print("❌ INSTAGRAM_ACCOUNT_ID non configuré — impossible de tester Instagram")
+        print("FAIL INSTAGRAM_ACCOUNT_ID non configuré — impossible de tester Instagram")
         return
 
     facebook = facebook_client.FacebookClient()
     if not facebook.configure():
-        print("❌ Configuration Facebook échouée")
+        print("FAIL Configuration Facebook échouée")
         return
 
-    test_message = "🧪 Test de publication Instagram depuis l'interface de veille."
-    print(f"Message de test : {test_message}")
+    test_message = "Test de publication Instagram depuis l'interface de veille."
+    print(f"Test message : {test_message}")
     print(f"Instagram Account ID : {config.INSTAGRAM_ACCOUNT_ID}")
 
     # Publication réelle
     success = facebook.post_to_instagram(message=test_message)
     if success:
-        print("✅ Publication Instagram de test RÉUSSIE !")
+        print("SUCCESS Instagram test post SUCCESS !")
     else:
-        print("❌ Publication Instagram de test ÉCHOUÉE (voir logs ci-dessus)")
+        print("FAILED Instagram test post FAILED (see logs above)")
 
 
 def main() -> None:
     """Point d'entrée principal du test."""
-    print("🔍 DIAGNOSTIC FACEBOOK — DÉMARRAGE")
+    print("Facebook Diagnostic - Starting")
     check_config()
     if not config.FB_PAGE_ACCESS_TOKEN:
-        print("\n❌ FB_PAGE_ACCESS_TOKEN manquant — impossible de continuer.")
+        print("\nFAIL FB_PAGE_ACCESS_TOKEN manquant — impossible de continuer.")
         return
 
     test_token_validity()
@@ -244,7 +244,7 @@ def main() -> None:
     test_post_instagram()
 
     print("\n" + "=" * 60)
-    print("✅ DIAGNOSTIC TERMINÉ")
+    print("SUCCESS DIAGNOSTIC COMPLETE")
     print("=" * 60)
 
 

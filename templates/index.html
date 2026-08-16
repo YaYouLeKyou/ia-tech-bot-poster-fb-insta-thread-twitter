@@ -846,8 +846,10 @@
                     {% endif %}
                 </button>
                 <button onclick="diagnosticFacebook()" class="btn btn-secondary" id="facebookDiagBtn">🔍 Diagnostic Facebook</button>
-            </div>
+                <button onclick="clearHistory()" class="btn btn-secondary" id="clearCacheBtn">🗑️ Effacer l'historique</button>
+</div>
         </div>
+
 
         <div class="stats">
             <div class="stat-box">
@@ -979,6 +981,39 @@
     <script>
         const DRY_RUN = document.body.dataset.dryRun === 'true';
         let currentTweetData = null;
+
+        // Post minute : publie immédiatement sur le(s) réseau(x) choisi(s)
+        async function postNow() {
+            const network = getSelectedNetwork();
+            if (!network) {
+                showToast('❌ Sélectionnez au moins un réseau (Twitter ou Facebook)', true);
+                return;
+            }
+
+            const loading = document.getElementById('loading');
+            if (loading) loading.style.display = 'block';
+
+            try {
+                const response = await fetch('/api/tweet-now', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ network: network })
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erreur lors de la publication');
+                }
+
+                // Afficher la simulation visuelle
+                currentTweetData = data;
+                showTweetPreview(data.tweet_preview);
+            } catch (error) {
+                showToast('❌ ' + error.message, true);
+            } finally {
+                if (loading) loading.style.display = 'none';
+            }
+        }
 
         function showToast(message, isError = false) {
             const toast = document.getElementById('toast');
@@ -1227,13 +1262,47 @@
             }
         }
 
+        async function clearHistory() {
+            if (!confirm('⚠️ Êtes-vous sûr de vouloir effacer tout l\'historique ?\nCette action est irréversible.')) {
+                return;
+            }
+
+            const btn = document.getElementById('clearCacheBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Effacement…';
+
+            try {
+                const response = await fetch('/api/clear-history', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erreur lors de l\'effacement');
+                }
+
+                showToast('✅ ' + data.message + ' (' + data.removed_news + ' articles supprimés)');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } catch (error) {
+                showToast('❌ ' + error.message, true);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🗑️ Effacer l\'historique';
+            }
+        }
+
         async function refreshProposal(index) {
             const card = document.getElementById('proposal-' + index);
+
             if (!card) return;
 
             card.style.opacity = '0.5';
+
             try {
                 const response = await fetch('/api/refresh');
+
                 const data = await response.json();
 
                 if (!response.ok) {
@@ -1251,6 +1320,7 @@
                 } else {
                     throw new Error('Aucune nouvelle proposition disponible');
                 }
+
             } catch (error) {
                 showToast('❌ ' + error.message, true);
             } finally {
@@ -1361,7 +1431,7 @@
             const status = document.getElementById('tweetStatus');
             const publishBtn = document.getElementById('publishBtn');
             publishBtn.disabled = true;
-            publishBtn.textContent = 'Publication en cours…';
+            publishBtn.textContent = 'Vérification…';
 
             try {
                 // Si dry-run, on simule juste la publication
@@ -1371,24 +1441,16 @@
                         status.className = 'tweet-status success';
                         status.style.display = 'block';
                         publishBtn.disabled = false;
-                        publishBtn.textContent = 'Simuler la publication';
+                        publishBtn.textContent = 'Fermer';
                         showToast('✅ Tweet simulé (DRY-RUN)');
                     }, 1500);
                     return;
                 }
 
-                // Publication réelle via l'API (avec le réseau sélectionné)
-                const network = currentTweetData.network || 'both';
-                const response = await fetch('/api/tweet-now', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ network: network })
-                });
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.error || 'Erreur lors de la publication');
-                }
+                // La publication a DÉJÀ été effectuée par l'appel à /api/tweet-now
+                // dans postNow() ou tweetNow(). On affiche juste les résultats.
+                const data = currentTweetData;
+                const network = data.network || 'all';
 
                 // Construit le message de statut selon les réseaux
                 const parts = [];
@@ -1436,7 +1498,7 @@
                 showToast('❌ ' + error.message, true);
             } finally {
                 publishBtn.disabled = false;
-                publishBtn.textContent = 'Publier le tweet';
+                publishBtn.textContent = 'Fermer';
             }
         }
 

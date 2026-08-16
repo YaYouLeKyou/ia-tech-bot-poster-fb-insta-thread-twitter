@@ -27,13 +27,15 @@ NUM_PROPOSALS = 3
 _breaking_news_lock = threading.Lock()
 
 
-def generate_breaking_news() -> Optional[dict]:
+def generate_breaking_news(force: bool = False) -> Optional[dict]:
     """
     Génère une breaking news AI à partir des derniers articles RSS.
 
+    :param force: Si True, ignore le cache anti-doublons et régénère
+                  même si tous les articles ont déjà été traités.
     :return: dict avec les infos de la news, ou None si échec
     """
-    logger.info("=== Génération d'une breaking news AI ===")
+    logger.info("=== Génération d'une breaking news AI (force=%s) ===", force)
 
     # Empêche l'exécution concurrente (superposition job planifié + API)
     if not _breaking_news_lock.acquire(blocking=False):
@@ -44,8 +46,13 @@ def generate_breaking_news() -> Optional[dict]:
         return None
 
     try:
-        # 1. Récupération des nouveaux articles RSS (non encore traités)
-        articles = rss_parser.fetch_new_articles(max_items=config.MAX_ARTICLES_TO_PROCESS)
+        # 1. Récupération des articles RSS
+        if force:
+            # Mode force : récupère tous les articles (ignore le cache anti-doublons)
+            articles = rss_parser.fetch_articles(max_items=config.MAX_ARTICLES_TO_PROCESS)
+        else:
+            # Mode normal : seulement les nouveaux articles non encore traités
+            articles = rss_parser.fetch_new_articles(max_items=config.MAX_ARTICLES_TO_PROCESS)
 
         if not articles:
             logger.warning("Aucun nouvel article récupéré depuis les flux RSS.")
@@ -106,6 +113,9 @@ def generate_breaking_news() -> Optional[dict]:
 
         # 5. Stockage en base
         database.save_breaking_news(news)
+
+        # 5b. Élague l'historique si la taille maximale est dépassée
+        database.enforce_max_history(config.MAX_HISTORY_SIZE)
 
         # 6. Marque tous les articles traités comme "déjà publiés" (anti-doublons)
         for proposal in proposals:
