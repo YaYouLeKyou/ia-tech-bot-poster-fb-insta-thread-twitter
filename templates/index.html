@@ -84,9 +84,9 @@
         }
 
         .status-badge.live {
-            background: rgba(46, 213, 115, 0.15);
-            border: 1px solid rgba(46, 213, 115, 0.4);
-            color: #2ed573;
+            background: rgba(66, 103, 178, 0.15);
+            border: 1px solid rgba(66, 103, 178, 0.4);
+            color: #4267b2;
         }
 
         .status-badge.twitter {
@@ -96,9 +96,9 @@
         }
 
         .status-badge.twitter-off {
-            background: rgba(255, 71, 87, 0.15);
-            border: 1px solid rgba(255, 71, 87, 0.4);
-            color: #ff4757;
+            background: rgba(255, 173, 31, 0.15);
+            border: 1px solid rgba(255, 173, 31, 0.4);
+            color: #ffad1f;
         }
 
         .status-badge.schedule {
@@ -117,6 +117,12 @@
             background: rgba(255, 71, 87, 0.15);
             border: 1px solid rgba(255, 71, 87, 0.4);
             color: #ff4757;
+        }
+
+        .status-badge.instagram-off {
+            background: rgba(255, 173, 31, 0.15);
+            border: 1px solid rgba(255, 173, 31, 0.4);
+            color: #ffad1f;
         }
 
         @keyframes pulse {
@@ -455,6 +461,22 @@
             color: #00d2ff;
             margin-top: 10px;
             font-size: 0.9rem;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .loading::before {
+            content: '';
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(0, 210, 255, 0.3);
+            border-top-color: #00d2ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
 
         .toast {
@@ -770,10 +792,10 @@
                 {% if dry_run %}
                 <span class="status-badge dry-run">🧪 Mode DRY-RUN</span>
                 {% else %}
-                <span class="status-badge live">🐦 Publication réelle</span>
+                <span class="status-badge live">📘 Publication Facebook</span>
                 {% endif %}
                 {% if twitter_configured %}
-                <span class="status-badge twitter">✅ Twitter connecté</span>
+                <span class="status-badge twitter-off">⏸️ Twitter désactivé</span>
                 {% else %}
                 <span class="status-badge twitter-off">❌ Twitter non configuré</span>
                 {% endif %}
@@ -782,6 +804,7 @@
                 {% else %}
                 <span class="status-badge facebook-off">❌ Facebook non configuré</span>
                 {% endif %}
+                <span class="status-badge instagram-off">⏸️ Instagram désactivé</span>
                 <span class="status-badge schedule">🕐 Publication : {{ schedule_times|join(' & ') }} UTC</span>
             </div>
         </header>
@@ -805,7 +828,7 @@
                 <div class="controls-group-title">⚡ Post minute</div>
                 <label>Envoyer sur :</label>
                 <label class="network-check twitter-check" id="netTwitterLabel">
-                    <input type="checkbox" id="netTwitter" checked onchange="updateNetworkCheck(this, 'netTwitterLabel')">
+                    <input type="checkbox" id="netTwitter" onchange="updateNetworkCheck(this, 'netTwitterLabel')">
                     🐦 Twitter
                 </label>
                 <label class="network-check facebook-check" id="netFacebookLabel">
@@ -813,7 +836,7 @@
                     📘 Facebook
                 </label>
                 <label class="network-check instagram-check" id="netInstagramLabel">
-                    <input type="checkbox" id="netInstagram" checked onchange="updateNetworkCheck(this, 'netInstagramLabel')">
+                    <input type="checkbox" id="netInstagram" onchange="updateNetworkCheck(this, 'netInstagramLabel')">
                     📸 Instagram
                 </label>
                 <button onclick="postNow()" class="btn btn-tweet">⚡ Publier maintenant</button>
@@ -1103,31 +1126,39 @@
             }
         }
 
-        // Récupère le réseau sélectionné (twitter, facebook, instagram, both, all)
+        // Récupère le réseau sélectionné (twitter, facebook, instagram)
+        // Par défaut, seulement Facebook est coché
         function getSelectedNetwork() {
             const twitter = document.getElementById('netTwitter').checked;
             const facebook = document.getElementById('netFacebook').checked;
             const instagram = document.getElementById('netInstagram').checked;
 
+            if (twitter && !facebook && !instagram) return 'twitter';
+            if (!twitter && facebook && !instagram) return 'facebook';
+            if (!twitter && !facebook && instagram) return 'instagram';
+            if (twitter && facebook && !instagram) return 'both';
+            if (twitter && !facebook && instagram) return 'both';
+            if (!twitter && facebook && instagram) return 'both';
             if (twitter && facebook && instagram) return 'all';
-            if (twitter && facebook) return 'both';
-            if (twitter && instagram) return 'both';
-            if (twitter) return 'twitter';
-            if (facebook) return 'facebook';
-            if (instagram) return 'instagram';
-            return null;
+            // Par défaut, si rien n'est coché, retourne Facebook
+            return 'facebook';
         }
 
-        // Post minute : publie immédiatement sur le(s) réseau(x) choisi(s)
+        // Post minute : publie immédiatement sur le réseau choisi
         async function postNow() {
             const network = getSelectedNetwork();
-            if (!network) {
-                showToast('❌ Sélectionnez au moins un réseau (Twitter ou Facebook)', true);
-                return;
-            }
-
             const loading = document.getElementById('loading');
-            if (loading) loading.style.display = 'block';
+            if (loading) {
+                loading.style.display = 'block';
+                const networkLabels = {
+                    'twitter': '🐦 Envoi du post Twitter…',
+                    'facebook': '📘 Envoi du post Facebook…',
+                    'instagram': '📸 Envoi du post Instagram…',
+                    'both': '📤 Envoi du post sur les réseaux sélectionnés…',
+                    'all': '📤 Envoi du post sur tous les réseaux…'
+                };
+                loading.textContent = networkLabels[network] || '⏳ Publication en cours…';
+            }
 
             try {
                 const response = await fetch('/api/tweet-now', {
@@ -1141,13 +1172,25 @@
                     throw new Error(data.error || 'Erreur lors de la publication');
                 }
 
-                // Afficher la simulation visuelle
+                if (loading && data.progress) {
+                    const lastStep = data.progress[data.progress.length - 1];
+                    if (lastStep && lastStep.message) {
+                        loading.textContent = lastStep.message;
+                    }
+                    setTimeout(() => {
+                        if (loading) loading.style.display = 'none';
+                    }, 800);
+                } else if (loading) {
+                    setTimeout(() => {
+                        if (loading) loading.style.display = 'none';
+                    }, 800);
+                }
+
                 currentTweetData = data;
                 showTweetPreview(data.tweet_preview);
             } catch (error) {
-                showToast('❌ ' + error.message, true);
-            } finally {
                 if (loading) loading.style.display = 'none';
+                showToast('❌ ' + error.message, true);
             }
         }
 
@@ -1354,11 +1397,16 @@
 
         async function tweetNow() {
             const loading = document.getElementById('loading');
-            if (loading) loading.style.display = 'block';
+            if (loading) {
+                loading.style.display = 'block';
+                loading.textContent = '⏳ Génération et publication Facebook en cours…';
+            }
 
             try {
                 const response = await fetch('/api/tweet-now', {
-                    method: 'POST'
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ network: 'facebook' })
                 });
                 const data = await response.json();
 
@@ -1366,13 +1414,25 @@
                     throw new Error(data.error || 'Erreur lors de la génération du tweet');
                 }
 
-                // Afficher la simulation visuelle du tweet
+                if (loading && data.progress) {
+                    const lastStep = data.progress[data.progress.length - 1];
+                    if (lastStep && lastStep.message) {
+                        loading.textContent = lastStep.message;
+                    }
+                    setTimeout(() => {
+                        if (loading) loading.style.display = 'none';
+                    }, 800);
+                } else if (loading) {
+                    setTimeout(() => {
+                        if (loading) loading.style.display = 'none';
+                    }, 800);
+                }
+
                 currentTweetData = data;
                 showTweetPreview(data.tweet_preview);
             } catch (error) {
-                showToast('❌ ' + error.message, true);
-            } finally {
                 if (loading) loading.style.display = 'none';
+                showToast('❌ ' + error.message, true);
             }
         }
 
@@ -1434,7 +1494,6 @@
             publishBtn.textContent = 'Vérification…';
 
             try {
-                // Si dry-run, on simule juste la publication
                 if (currentTweetData.dry_run) {
                     setTimeout(() => {
                         status.textContent = '✅ Tweet simulé avec succès (mode DRY-RUN) — aucun tweet réel envoyé.';
@@ -1447,32 +1506,29 @@
                     return;
                 }
 
-                // La publication a DÉJÀ été effectuée par l'appel à /api/tweet-now
-                // dans postNow() ou tweetNow(). On affiche juste les résultats.
                 const data = currentTweetData;
-                const network = data.network || 'all';
+                const network = data.network || 'facebook';
 
-                // Construit le message de statut selon les réseaux
                 const parts = [];
                 if (network === 'twitter' || network === 'both' || network === 'all') {
-                    parts.push(data.published ? '🐦 Twitter ✅' : '🐦 Twitter ❌');
+                    parts.push(data.published ? '🐦 Twitter envoyé' : '🐦 Twitter non envoyé');
                 }
                 if (network === 'facebook' || network === 'both' || network === 'all') {
                     if (data.facebook_published) {
-                        parts.push('📘 Facebook ✅');
+                        parts.push('📘 Facebook envoyé avec succès');
                     } else if (data.facebook_error) {
-                        parts.push('📘 Facebook ❌ — ' + data.facebook_error);
+                        parts.push('📘 Facebook échec : ' + data.facebook_error);
                     } else {
-                        parts.push('📘 Facebook ❌');
+                        parts.push('📘 Facebook non envoyé');
                     }
                 }
                 if (network === 'instagram' || network === 'both' || network === 'all') {
                     if (data.instagram_published) {
-                        parts.push('📸 Instagram ✅');
+                        parts.push('📸 Instagram envoyé');
                     } else if (data.instagram_error) {
-                        parts.push('📸 Instagram ❌ — ' + data.instagram_error);
+                        parts.push('📸 Instagram échec : ' + data.instagram_error);
                     } else {
-                        parts.push('📸 Instagram ❌');
+                        parts.push('📸 Instagram non envoyé');
                     }
                 }
 
@@ -1481,12 +1537,12 @@
                                    (network !== 'instagram' || data.instagram_published);
 
                 if (anySuccess) {
-                    status.textContent = '✅ Publication réussie : ' + parts.join(' · ');
+                    status.textContent = '✅ Post envoyé : ' + parts.join(' · ');
                     status.className = 'tweet-status success';
                     status.style.display = 'block';
                     showToast('✅ ' + parts.join(' · '));
                 } else {
-                    status.textContent = '⚠️ Publication échouée : ' + parts.join(' · ');
+                    status.textContent = '⚠️ Échec de l\'envoi : ' + parts.join(' · ');
                     status.className = 'tweet-status error';
                     status.style.display = 'block';
                     showToast('❌ Échec de la publication', true);

@@ -233,20 +233,27 @@ def api_set_schedule():
 @app.route("/api/tweet-now", methods=["POST"])
 def api_tweet_now():
     """
-    API : génère une nouvelle breaking news et la publie sur le(s) réseau(x)
-    choisi(s) : "twitter", "facebook" ou "both" (défaut).
-    Retourne aussi la simulation visuelle du tweet pour validation.
-    Gère automatiquement le mode gratuit (crédits épuisés).
+    API : génère une nouvelle breaking news et la publie sur Facebook
+    (prioritaire). Twitter et Instagram sont désactivés par défaut
+    (Twitter sans accès API payante, Instagram non fonctionnel).
+    Retourne la simulation visuelle et le statut de publication.
     """
     data = request.get_json(silent=True) or {}
-    network = data.get("network", "all")
-    if network not in ("twitter", "facebook", "instagram", "both", "all"):
-        network = "all"
+    # Par défaut, ne publie que sur Facebook
+    network = data.get("network", "facebook")
+    if network not in ("twitter", "facebook", "instagram"):
+        network = "facebook"
+
+    progress = []
+    result = {
+        "success": True,
+        "network": network,
+        "progress": progress,
+    }
 
     # 1. Génération de la breaking news
     news = news_service.generate_breaking_news(force=True)
     if not news:
-        # Pas de nouveaux articles récupérés depuis les flux RSS
         latest = news_service.get_latest_news()
         if latest:
             return jsonify({
@@ -255,6 +262,8 @@ def api_tweet_now():
                 "latest_title": latest["title"][:50],
             }), 409
         return jsonify({"error": "Aucun article disponible."}), 404
+
+    progress.append({"step": "generation", "message": "Article généré avec succès", "done": True})
 
     # 2. Simulation visuelle du tweet
     tweet_preview = {
@@ -265,57 +274,95 @@ def api_tweet_now():
         "published_at": news["published_at"],
         "character_count": len(news["breaking_text"]),
     }
+    result["tweet_preview"] = tweet_preview
+    result["news"] = news
 
-    # 3. Publication sur Twitter (si demandé, configuré et pas en dry-run)
+    # 3. Publication sur Twitter (seulement si explicitement demandé)
     published = False
     free_mode = False
-    if network in ("twitter", "both", "all"):
+    if network == "twitter":
+        progress.append({"step": "twitter", "message": "Envoi du post Twitter…", "done": False})
         if not config.DRY_RUN and config.TWITTER_API_KEY:
             try:
                 twitter = twitter_client.TwitterClient()
                 if twitter.configure():
                     published = twitter.post_tweet(news["breaking_text"])
-                    # Détecte si le mode gratuit a été activé (crédits épuisés)
                     free_mode = twitter._credits_depleted
                     logger.info("Tweet publié : %s (mode gratuit : %s)", published, free_mode)
+                    progress[-1]["done"] = True
+                    progress[-1]["success"] = published
+                else:
+                    progress[-1]["done"] = True
+                    progress[-1]["success"] = False
+                    progress[-1]["error"] = "Twitter non configuré"
             except Exception as exc:  # noqa: BLE001
                 logger.error("Erreur lors de la publication Twitter : %s", exc)
+                progress[-1]["done"] = True
+                progress[-1]["success"] = False
+                progress[-1]["error"] = str(exc)
         else:
-            logger.info("Mode dry-run ou Twitter non configuré — tweet non publié réellement")
+            progress[-1]["done"] = True
+            progress[-1]["success"] = False
+            progress[-1]["error"] = "Mode dry-run ou Twitter non configuré"
+    else:
+        # Twitter désactivé par défaut
+        if network != "facebook":
+            progress.append({"step": "twitter", "message": "Twitter désactivé par défaut", "done": True, "skipped": True})
 
-    # 4. Publication sur Facebook (si demandé, configuré et pas en dry-run)
+    result["published"] = published
+    result["free_mode"] = free_mode
+
+    # 4. Publication sur Facebook (prioritaire)
     facebook_published = False
     facebook_error = None
-    if network in ("facebook", "both", "all"):
-        if not config.DRY_RUN and config.FB_PAGE_ACCESS_TOKEN and config.FACEBOOK_PAGE_ID:
-            try:
-                facebook = facebook_client.FacebookClient()
-                if facebook.configure():
-                    facebook_published = facebook.post_to_page(
-                        message=news["breaking_text"],
-                        link=news.get("url", ""),
-                    )
-                    logger.info("Post Facebook publié : %s", facebook_published)
-                    if not facebook_published:
-                        facebook_error = "Échec de la publication Facebook — voir les logs serveur"
-                else:
-                    facebook_error = (
-                        "Token Facebook/Instagram expiré ou invalide. "
-                        "Générez un nouveau Page Access Token sur "
-                        "https://developers.facebook.com/tools/access-token/ "
-                        "avec les permissions pages_read_engagement et pages_manage_posts, "
-                        "puis redémarrez l'application."
-                    )
-            except Exception as exc:  # noqa: BLE001
-                logger.error("Erreur lors de la publication Facebook : %s", exc)
-                facebook_error = str(exc)
-        else:
-            logger.info("Mode dry-run ou Facebook non configuré — post non publié réellement")
+    progress.append({"step": "facebook", "message": "Envoi du post Facebook…", "done": False})
+    if not config.DRY_RUN and config.FB_PAGE_ACCESS_TOKEN and config.FACEBOOK_PAGE_ID:
+        try:
+            facebook = facebook_client.FacebookClient()
+            if facebook.configure():
+                facebook_published = facebook.post_to_page(
+                    message=news["breaking_text"],
+                    link=news.get("url", ""),
+                )
+                logger.info("Post Facebook publié : %s", facebook_published)
+                progress[-1]["done"] = True
+                progress[-1]["success"] = facebook_published
+                if not facebook_published:
+                    facebook_error = "Échec de la publication Facebook — voir les logs serveur"
+                    progress[-1]["error"] = facebook_error
+            else:
+                facebook_error = (
+                    "Token Facebook/Instagram expiré ou invalide. "
+                    "Générez un nouveau Page Access Token sur "
+                    "https://developers.facebook.com/tools/access-token/ "
+                    "avec les permissions pages_read_engagement et pages_manage_posts, "
+                    "puis redémarrez l'application."
+                )
+                progress[-1]["done"] = True
+                progress[-1]["success"] = False
+                progress[-1]["error"] = facebook_error
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Erreur lors de la publication Facebook : %s", exc)
+            facebook_error = str(exc)
+            progress[-1]["done"] = True
+            progress[-1]["success"] = False
+            progress[-1]["error"] = facebook_error
+    else:
+        progress[-1]["done"] = True
+        progress[-1]["success"] = False
+        if config.DRY_RUN:
+            progress[-1]["error"] = "Mode dry-run activé"
+        elif not config.FB_PAGE_ACCESS_TOKEN or not config.FACEBOOK_PAGE_ID:
+            progress[-1]["error"] = "Facebook non configuré"
 
-    # 5. Publication sur Instagram (si demandé, configuré et pas en dry-run)
+    result["facebook_published"] = facebook_published
+    result["facebook_error"] = facebook_error
+
+    # 5. Publication sur Instagram (seulement si explicitement demandé)
     instagram_published = False
     instagram_error = None
-    if network in ("instagram", "both", "all"):
+    if network == "instagram":
+        progress.append({"step": "instagram", "message": "Envoi du post Instagram…", "done": False})
         if not config.DRY_RUN and config.FB_PAGE_ACCESS_TOKEN and config.INSTAGRAM_ACCOUNT_ID:
             try:
                 facebook = facebook_client.FacebookClient()
@@ -324,8 +371,11 @@ def api_tweet_now():
                         message=news["breaking_text"],
                     )
                     logger.info("Post Instagram publié : %s", instagram_published)
+                    progress[-1]["done"] = True
+                    progress[-1]["success"] = instagram_published
                     if not instagram_published:
                         instagram_error = "Échec de la publication Instagram — voir les logs serveur"
+                        progress[-1]["error"] = instagram_error
                 else:
                     instagram_error = (
                         "Token Instagram expiré ou invalide. "
@@ -334,25 +384,40 @@ def api_tweet_now():
                         "avec les permissions pages_read_engagement et pages_manage_posts, "
                         "puis redémarrez l'application."
                     )
+                    progress[-1]["done"] = True
+                    progress[-1]["success"] = False
+                    progress[-1]["error"] = instagram_error
             except Exception as exc:  # noqa: BLE001
                 logger.error("Erreur lors de la publication Instagram : %s", exc)
                 instagram_error = str(exc)
+                progress[-1]["done"] = True
+                progress[-1]["success"] = False
+                progress[-1]["error"] = instagram_error
         else:
-            logger.info("Mode dry-run ou Instagram non configuré — post non publié réellement")
+            progress[-1]["done"] = True
+            progress[-1]["success"] = False
+            if config.DRY_RUN:
+                progress[-1]["error"] = "Mode dry-run activé"
+            elif not config.INSTAGRAM_ACCOUNT_ID:
+                progress[-1]["error"] = "Instagram non configuré"
+    else:
+        # Instagram désactivé par défaut
+        if network != "facebook":
+            progress.append({"step": "instagram", "message": "Instagram désactivé par défaut", "done": True, "skipped": True})
 
-    return jsonify({
-        "success": True,
-        "news": news,
-        "tweet_preview": tweet_preview,
-        "published": published,
-        "facebook_published": facebook_published,
-        "facebook_error": facebook_error,
-        "instagram_published": instagram_published,
-        "instagram_error": instagram_error,
-        "network": network,
-        "dry_run": config.DRY_RUN,
-        "free_mode": free_mode,
-    })
+    result["instagram_published"] = instagram_published
+    result["instagram_error"] = instagram_error
+    result["dry_run"] = config.DRY_RUN
+
+    # Message final de progression
+    if facebook_published:
+        progress.append({"step": "done", "message": "Publication terminée avec succès !", "done": True, "final": True})
+    elif published or instagram_published:
+        progress.append({"step": "done", "message": "Publication terminée (partielle)", "done": True, "final": True})
+    else:
+        progress.append({"step": "done", "message": "Publication échouée", "done": True, "final": True, "error": True})
+
+    return jsonify(result)
 
 
 @app.route("/api/twitter/status")
