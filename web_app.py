@@ -150,14 +150,20 @@ def api_history():
 
 @app.route("/api/refresh")
 def api_refresh():
-    """API JSON : force la génération d'une nouvelle breaking news."""
+    """
+    API JSON : force la génération d'une nouvelle breaking news.
+    Filtre les articles déjà traités pour toujours renvoyer du contenu neuf.
+    """
     news = news_service.generate_breaking_news(force=True)
     if not news:
         latest = news_service.get_latest_news()
         if latest:
             return jsonify({
                 "success": False,
-                "message": "Aucun nouvel article disponible.",
+                "error": "Aucun nouvel article disponible.",
+                "message": "Tous les articles RSS ont déjà été publiés. "
+                           "Patientez jusqu'à de nouveaux articles, ou "
+                           "effacez l'historique pour tout republier.",
                 "latest_title": latest["title"][:50],
             }), 409
         return jsonify({
@@ -165,6 +171,31 @@ def api_refresh():
             "detail": "Tous les flux RSS ont été épuisés ou inaccessible.",
         }), 404
     return jsonify(news)
+
+
+@app.route("/api/refresh-proposal")
+def api_refresh_proposal():
+    """
+    API JSON : génère une seule proposition secondaire (article non traité).
+    Utilisé par le bouton 🔄 des cartes "Autres propositions".
+    """
+    proposal = news_service.generate_proposal()
+    if not proposal:
+        latest = news_service.get_latest_news()
+        if latest:
+            return jsonify({
+                "success": False,
+                "error": "Aucun nouvel article disponible.",
+                "message": "Tous les articles RSS ont déjà été publiés. "
+                           "Patientez jusqu'à de nouveaux articles, ou "
+                           "effacez l'historique pour tout republier.",
+                "latest_title": latest["title"][:50],
+            }), 409
+        return jsonify({
+            "error": "Échec de la génération de la proposition.",
+            "detail": "Tous les flux RSS ont été épuisés ou inaccessible.",
+        }), 404
+    return jsonify(proposal)
 
 
 @app.route("/api/clear-history", methods=["POST"])
@@ -241,8 +272,13 @@ def api_tweet_now():
     data = request.get_json(silent=True) or {}
     # Par défaut, ne publie que sur Facebook
     network = data.get("network", "facebook")
-    if network not in ("twitter", "facebook", "instagram"):
+    if network not in ("twitter", "facebook", "instagram", "all"):
         network = "facebook"
+
+    # Si "all" est demandé, publier sur toutes les plateformes
+    post_twitter = network in ("twitter", "all")
+    post_facebook = network in ("facebook", "all")
+    post_instagram = network in ("instagram", "all")
 
     progress = []
     result = {
@@ -280,7 +316,7 @@ def api_tweet_now():
     # 3. Publication sur Twitter (seulement si explicitement demandé)
     published = False
     free_mode = False
-    if network == "twitter":
+    if post_twitter:
         progress.append({"step": "twitter", "message": "Envoi du post Twitter…", "done": False})
         if not config.DRY_RUN and config.TWITTER_API_KEY:
             try:
@@ -306,7 +342,7 @@ def api_tweet_now():
             progress[-1]["error"] = "Mode dry-run ou Twitter non configuré"
     else:
         # Twitter désactivé par défaut
-        if network != "facebook":
+        if network == "all":
             progress.append({"step": "twitter", "message": "Twitter désactivé par défaut", "done": True, "skipped": True})
 
     result["published"] = published
@@ -361,7 +397,7 @@ def api_tweet_now():
     # 5. Publication sur Instagram (seulement si explicitement demandé)
     instagram_published = False
     instagram_error = None
-    if network == "instagram":
+    if post_instagram:
         progress.append({"step": "instagram", "message": "Envoi du post Instagram…", "done": False})
         if not config.DRY_RUN and config.FB_PAGE_ACCESS_TOKEN and config.INSTAGRAM_ACCOUNT_ID:
             try:
@@ -402,7 +438,7 @@ def api_tweet_now():
                 progress[-1]["error"] = "Instagram non configuré"
     else:
         # Instagram désactivé par défaut
-        if network != "facebook":
+        if network == "all":
             progress.append({"step": "instagram", "message": "Instagram désactivé par défaut", "done": True, "skipped": True})
 
     result["instagram_published"] = instagram_published

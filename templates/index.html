@@ -239,6 +239,68 @@
             border-color: rgba(0, 210, 255, 0.5);
         }
 
+        .post-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 10px 0;
+        }
+
+        .post-buttons .btn {
+            padding: 10px 18px;
+            font-size: 0.9rem;
+            border-radius: 8px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .btn-twitter {
+            background: rgba(29, 161, 242, 0.15);
+            border-color: rgba(29, 161, 242, 0.4);
+            color: #1da1f2;
+        }
+
+        .btn-twitter:hover {
+            background: rgba(29, 161, 242, 0.3);
+            box-shadow: 0 4px 15px rgba(29, 161, 242, 0.25);
+        }
+
+        .btn-facebook {
+            background: rgba(66, 103, 178, 0.15);
+            border-color: rgba(66, 103, 178, 0.4);
+            color: #4267b2;
+        }
+
+        .btn-facebook:hover {
+            background: rgba(66, 103, 178, 0.3);
+            box-shadow: 0 4px 15px rgba(66, 103, 178, 0.25);
+        }
+
+        .btn-instagram {
+            background: rgba(225, 48, 108, 0.15);
+            border-color: rgba(225, 48, 108, 0.4);
+            color: #e1306c;
+        }
+
+        .btn-instagram:hover {
+            background: rgba(225, 48, 108, 0.3);
+            box-shadow: 0 4px 15px rgba(225, 48, 108, 0.25);
+        }
+
+        .btn-all {
+            background: rgba(0, 210, 255, 0.15);
+            border-color: rgba(0, 210, 255, 0.4);
+            color: #00d2ff;
+        }
+
+        .btn-all:hover {
+            background: rgba(0, 210, 255, 0.3);
+            box-shadow: 0 4px 15px rgba(0, 210, 255, 0.25);
+        }
+
         .schedule-hint {
             color: #777;
             font-size: 0.8rem;
@@ -823,24 +885,16 @@
                 <div class="schedule-hint">Les publications automatiques auront lieu à ces heures (format UTC).</div>
             </div>
 
-            <!-- Post minute : publication immédiate sur le(s) réseau(x) choisi(s) -->
+            <!-- Post minute : publication immédiate sur une plateforme spécifique -->
             <div class="controls">
                 <div class="controls-group-title">⚡ Post minute</div>
-                <label>Envoyer sur :</label>
-                <label class="network-check twitter-check" id="netTwitterLabel">
-                    <input type="checkbox" id="netTwitter" onchange="updateNetworkCheck(this, 'netTwitterLabel')">
-                    🐦 Twitter
-                </label>
-                <label class="network-check facebook-check" id="netFacebookLabel">
-                    <input type="checkbox" id="netFacebook" checked onchange="updateNetworkCheck(this, 'netFacebookLabel')">
-                    📘 Facebook
-                </label>
-                <label class="network-check instagram-check" id="netInstagramLabel">
-                    <input type="checkbox" id="netInstagram" onchange="updateNetworkCheck(this, 'netInstagramLabel')">
-                    📸 Instagram
-                </label>
-                <button onclick="postNow()" class="btn btn-tweet">⚡ Publier maintenant</button>
-                <div class="schedule-hint">Génère une nouvelle breaking news et la publie immédiatement sur le(s) réseau(x) sélectionné(s).</div>
+                <div class="post-buttons">
+                    <button onclick="postNow('twitter')" class="btn btn-twitter">🐦 Poster sur Twitter</button>
+                    <button onclick="postNow('facebook')" class="btn btn-facebook">📘 Poster sur Facebook</button>
+                    <button onclick="postNow('instagram')" class="btn btn-instagram">📸 Poster sur Instagram</button>
+                    <button onclick="postNow('all')" class="btn btn-all">📤 Poster sur toutes les plateformes</button>
+                </div>
+                <div class="schedule-hint">Génère une nouvelle breaking news et la publie immédiatement sur la plateforme sélectionnée.</div>
             </div>
 
             <!-- Connexions aux réseaux -->
@@ -1005,39 +1059,6 @@
         const DRY_RUN = document.body.dataset.dryRun === 'true';
         let currentTweetData = null;
 
-        // Post minute : publie immédiatement sur le(s) réseau(x) choisi(s)
-        async function postNow() {
-            const network = getSelectedNetwork();
-            if (!network) {
-                showToast('❌ Sélectionnez au moins un réseau (Twitter ou Facebook)', true);
-                return;
-            }
-
-            const loading = document.getElementById('loading');
-            if (loading) loading.style.display = 'block';
-
-            try {
-                const response = await fetch('/api/tweet-now', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ network: network })
-                });
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.error || 'Erreur lors de la publication');
-                }
-
-                // Afficher la simulation visuelle
-                currentTweetData = data;
-                showTweetPreview(data.tweet_preview);
-            } catch (error) {
-                showToast('❌ ' + error.message, true);
-            } finally {
-                if (loading) loading.style.display = 'none';
-            }
-        }
-
         function showToast(message, isError = false) {
             const toast = document.getElementById('toast');
             toast.textContent = message;
@@ -1057,7 +1078,8 @@
                 const data = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(data.error || 'Erreur lors de la génération');
+                    // Affiche le message détaillé si présent (ex: 409)
+                    throw new Error(data.message || data.error || 'Erreur lors de la génération');
                 }
 
                 showToast('✅ Nouvelle breaking news générée !');
@@ -1126,27 +1148,8 @@
             }
         }
 
-        // Récupère le réseau sélectionné (twitter, facebook, instagram)
-        // Par défaut, seulement Facebook est coché
-        function getSelectedNetwork() {
-            const twitter = document.getElementById('netTwitter').checked;
-            const facebook = document.getElementById('netFacebook').checked;
-            const instagram = document.getElementById('netInstagram').checked;
-
-            if (twitter && !facebook && !instagram) return 'twitter';
-            if (!twitter && facebook && !instagram) return 'facebook';
-            if (!twitter && !facebook && instagram) return 'instagram';
-            if (twitter && facebook && !instagram) return 'both';
-            if (twitter && !facebook && instagram) return 'both';
-            if (!twitter && facebook && instagram) return 'both';
-            if (twitter && facebook && instagram) return 'all';
-            // Par défaut, si rien n'est coché, retourne Facebook
-            return 'facebook';
-        }
-
-        // Post minute : publie immédiatement sur le réseau choisi
-        async function postNow() {
-            const network = getSelectedNetwork();
+        // Post minute : publie immédiatement sur la plateforme choisie
+        async function postNow(network) {
             const loading = document.getElementById('loading');
             if (loading) {
                 loading.style.display = 'block';
@@ -1154,8 +1157,7 @@
                     'twitter': '🐦 Envoi du post Twitter…',
                     'facebook': '📘 Envoi du post Facebook…',
                     'instagram': '📸 Envoi du post Instagram…',
-                    'both': '📤 Envoi du post sur les réseaux sélectionnés…',
-                    'all': '📤 Envoi du post sur tous les réseaux…'
+                    'all': '📤 Envoi du post sur toutes les plateformes…'
                 };
                 loading.textContent = networkLabels[network] || '⏳ Publication en cours…';
             }
@@ -1344,21 +1346,21 @@
             card.style.opacity = '0.5';
 
             try {
-                const response = await fetch('/api/refresh');
+                const response = await fetch('/api/refresh-proposal');
 
                 const data = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(data.error || 'Erreur lors du rafraîchissement');
+                    // Affiche le message détaillé si présent (ex: 409)
+                    throw new Error(data.message || data.error || 'Erreur lors du rafraîchissement');
                 }
 
-                // Met à jour la proposition avec la nouvelle news
-                if (data.secondary_proposals && data.secondary_proposals[index - 1]) {
-                    const proposal = data.secondary_proposals[index - 1];
-                    card.querySelector('h4').textContent = proposal.title;
-                    card.querySelector('.proposal-meta span').textContent = '📰 ' + proposal.source;
-                    card.querySelector('.proposal-text').textContent = proposal.breaking_text;
-                    card.querySelector('.proposal-actions a').href = proposal.url;
+                // Met à jour la proposition avec la nouvelle proposition
+                if (data && data.title) {
+                    card.querySelector('h4').textContent = data.title;
+                    card.querySelector('.proposal-meta span').textContent = '📰 ' + data.source;
+                    card.querySelector('.proposal-text').textContent = data.breaking_text;
+                    card.querySelector('.proposal-actions a').href = data.url;
                     showToast('✅ Proposition ' + index + ' rafraîchie !');
                 } else {
                     throw new Error('Aucune nouvelle proposition disponible');
@@ -1510,10 +1512,10 @@
                 const network = data.network || 'facebook';
 
                 const parts = [];
-                if (network === 'twitter' || network === 'both' || network === 'all') {
+                if (network === 'twitter' || network === 'all') {
                     parts.push(data.published ? '🐦 Twitter envoyé' : '🐦 Twitter non envoyé');
                 }
-                if (network === 'facebook' || network === 'both' || network === 'all') {
+                if (network === 'facebook' || network === 'all') {
                     if (data.facebook_published) {
                         parts.push('📘 Facebook envoyé avec succès');
                     } else if (data.facebook_error) {
@@ -1522,7 +1524,7 @@
                         parts.push('📘 Facebook non envoyé');
                     }
                 }
-                if (network === 'instagram' || network === 'both' || network === 'all') {
+                if (network === 'instagram' || network === 'all') {
                     if (data.instagram_published) {
                         parts.push('📸 Instagram envoyé');
                     } else if (data.instagram_error) {
