@@ -1,12 +1,17 @@
 """
-Générateur IA de tweets — DeepSeek / OpenAI (SDK OpenAI compatible).
+Générateur IA de tweets — Gemini (principal) / Groq (fallback).
 
 Transforme un article RSS en tweet optimisé en français,
 avec 2 hashtags ciblés et un ton journalistique expert Tech/IA.
+
+Stratégie :
+  1. Gemini (gratuit, fiable, tweet complet avec max_tokens=2000) — principal
+  2. Groq (fallback) — si Gemini est indisponible ou rate-limité
 """
 
 import logging
 import re
+import time
 from typing import Optional
 
 from openai import OpenAI
@@ -17,6 +22,11 @@ logger = logging.getLogger(__name__)
 
 # Limite stricte imposée à l'IA (marge de sécurité sous les 280)
 HARD_LIMIT = config.MAX_TWEET_LENGTH
+
+# Nombre maximal de tentatives en cas de rate limit (429)
+MAX_RETRIES = 5
+# Délai de base pour le backoff exponentiel (en secondes)
+RETRY_BASE_DELAY = 5
 
 
 def _truncate_tweet(text: str, url: str) -> str:
@@ -59,9 +69,112 @@ def _clean_generated_tweet(raw: str) -> str:
     return text
 
 
+def _is_rate_limited(exc: Exception) -> bool:
+    """Vérifie si l'exception est un rate limit (HTTP 429)."""
+    text = str(exc).lower()
+    return "429" in text or "rate limit" in text or "rate_limit" in text
+
+
+def _generate_with_client(
+    client: OpenAI,
+    model: str,
+    provider_name: str,
+    prompt: str,
+    title: str,
+    url: str,
+) -> Optional[str]:
+    """
+    Tente de générer un tweet avec un client OpenAI-compatible donné.
+
+    :param client: Client OpenAI configuré
+    :param model: Nom du modèle
+    :param provider_name: Nom du fournisseur (pour les logs)
+    :param prompt: Prompt utilisateur
+    :param title: Titre de l'article (pour les logs)
+    :param url: Lien de l'article
+    :return: Tweet prêt à publier, ou None si échec
+    """
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            logger.info(
+                "Appel de l'IA (%s via %s) pour générer le tweet… (tentative %d/%d)",
+                model, provider_name, attempt, MAX_RETRIES,
+            )
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": config.AI_SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.7,
+                max_tokens=config.LLM_MAX_TOKENS,
+            )
+
+            raw_tweet = response.choices[0].message.content or ""
+            tweet = _clean_generated_tweet(raw_tweet)
+
+            # Force la présence du lien à la fin si l'IA ne l'a pas inclus
+            if url not in tweet:
+                if len(tweet) + len(url) + 2 > HARD_LIMIT:
+                    tweet = _truncate_tweet(tweet, url)
+                tweet = f"{tweet}\n{url}".strip()
+
+            # Vérifie que le tweet contient du contenu réel (pas seulement le lien)
+            tweet_without_url = tweet.replace(url, "").strip()
+            if len(tweet_without_url) < 20:
+                logger.warning(
+                    "Réponse IA vide ou quasi vide (contenu sans lien : %d caractères) "
+                    "— nouvelle tentative %d/%d",
+                    len(tweet_without_url), attempt, MAX_RETRIES,
+                )
+                if attempt < MAX_RETRIES:
+                    wait = RETRY_BASE_DELAY * (2 ** (attempt - 1))
+                    logger.info("Attente de %ds avant nouvelle tentative…", wait)
+                    time.sleep(wait)
+                    continue
+                logger.error("L'IA n'a pas produit de contenu après %d tentatives", MAX_RETRIES)
+                return None
+
+            # Vérifie les hashtags — ajoute un fallback #IA si absent
+            if not re.search(r"#[\wéàèêâîôûç]+", tweet):
+                hashtag = " #IA"
+                if len(tweet) + len(hashtag) <= HARD_LIMIT:
+                    tweet = f"{tweet}{hashtag}"
+                else:
+                    tweet = _truncate_tweet(tweet + hashtag, url)
+
+            # Troncature finale de sécurité
+            if len(tweet) > HARD_LIMIT:
+                tweet = _truncate_tweet(tweet, url)
+
+            logger.info("Tweet généré : %d caractères", len(tweet))
+            return tweet
+
+        except Exception as exc:  # noqa: BLE001
+            logger.error(
+                "Erreur %s (tentative %d/%d) : %s",
+                provider_name, attempt, MAX_RETRIES, exc,
+            )
+            if _is_rate_limited(exc) and attempt < MAX_RETRIES:
+                wait = RETRY_BASE_DELAY * (2 ** (attempt - 1))  # 5s, 10s, 20s, 40s, 80s
+                logger.warning(
+                    "Rate limit %s détecté — nouvelle tentative dans %ds",
+                    provider_name, wait,
+                )
+                time.sleep(wait)
+                continue
+            return None
+
+    return None
+
+
 def generate_tweet(title: str, url: str, source: str, summary: str = "") -> Optional[str]:
     """
     Génère un tweet en français à partir d'un article.
+
+    Stratégie multi-fournisseurs :
+      1. Gemini (principal, gratuit, fiable)
+      2. Groq (fallback, si Gemini est indisponible ou rate-limité)
 
     :param title: Titre de l'article
     :param url: Lien de l'article
@@ -81,44 +194,35 @@ def generate_tweet(title: str, url: str, source: str, summary: str = "") -> Opti
         max_length=HARD_LIMIT,
     )
 
-    try:
-        client = OpenAI(api_key=config.LLM_API_KEY, base_url=config.LLM_BASE_URL)
-
-        logger.info("Appel de l'IA (%s) pour générer le tweet…", config.LLM_MODEL)
-        response = client.chat.completions.create(
-            model=config.LLM_MODEL,
-            messages=[
-                {"role": "system", "content": config.AI_SYSTEM_PROMPT},
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.7,
-            max_tokens=300,
-        )
-
-        raw_tweet = response.choices[0].message.content or ""
-        tweet = _clean_generated_tweet(raw_tweet)
-
-        # Force la présence du lien à la fin si l'IA ne l'a pas inclus
-        if url not in tweet:
-            if len(tweet) + len(url) + 2 > HARD_LIMIT:
-                tweet = _truncate_tweet(tweet, url)
-            tweet = f"{tweet}\n{url}".strip()
-
-        # Vérifie les hashtags — ajoute un fallback #IA si absent
-        if not re.search(r"#[\wéàèêâîôûç]+", tweet):
-            hashtag = " #IA"
-            if len(tweet) + len(hashtag) <= HARD_LIMIT:
-                tweet = f"{tweet}{hashtag}"
-            else:
-                tweet = _truncate_tweet(tweet + hashtag, url)
-
-        # Troncature finale de sécurité
-        if len(tweet) > HARD_LIMIT:
-            tweet = _truncate_tweet(tweet, url)
-
-        logger.info("Tweet généré : %d caractères", len(tweet))
+    # ── 1. Fournisseur principal : Gemini ──
+    gemini_client = OpenAI(api_key=config.LLM_API_KEY, base_url=config.LLM_BASE_URL)
+    tweet = _generate_with_client(
+        client=gemini_client,
+        model=config.LLM_MODEL,
+        provider_name="Gemini",
+        prompt=prompt,
+        title=title,
+        url=url,
+    )
+    if tweet:
         return tweet
 
-    except Exception as exc:  # noqa: BLE001
-        logger.error("Erreur lors de la génération IA : %s", exc)
-        return None
+    # ── 2. Fallback : Groq ──
+    if config.GROQ_API_KEY:
+        logger.warning("Gemini indisponible — bascule sur Groq (fallback)")
+        groq_client = OpenAI(api_key=config.GROQ_API_KEY, base_url=config.GROQ_BASE_URL)
+        tweet = _generate_with_client(
+            client=groq_client,
+            model=config.GROQ_MODEL,
+            provider_name="Groq",
+            prompt=prompt,
+            title=title,
+            url=url,
+        )
+        if tweet:
+            return tweet
+    else:
+        logger.warning("GROQ_API_KEY manquante — pas de fallback disponible")
+
+    logger.error("Échec de la génération IA (Gemini + Groq)")
+    return None

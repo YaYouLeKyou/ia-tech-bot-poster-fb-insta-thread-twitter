@@ -272,12 +272,12 @@ def api_tweet_now():
     data = request.get_json(silent=True) or {}
     # Par défaut, ne publie que sur Facebook
     network = data.get("network", "facebook")
-    if network not in ("twitter", "facebook", "instagram", "all"):
+    if network not in ("twitter", "facebook", "instagram", "both", "all"):
         network = "facebook"
 
-    # Si "all" est demandé, publier sur toutes les plateformes
-    post_twitter = network in ("twitter", "all")
-    post_facebook = network in ("facebook", "all")
+    # Si "all" ou "both" est demandé, publier sur les plateformes sélectionnées
+    post_twitter = network in ("twitter", "both", "all")
+    post_facebook = network in ("facebook", "both", "all")
     post_instagram = network in ("instagram", "all")
 
     progress = []

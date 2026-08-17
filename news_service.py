@@ -8,6 +8,7 @@ chacun, et les stocke en base pour affichage sur la page web.
 
 import logging
 import threading
+import time
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -31,8 +32,9 @@ def generate_breaking_news(force: bool = False) -> Optional[dict]:
     """
     Génère une breaking news AI à partir des derniers articles RSS.
 
-    :param force: Si True, ignore le cache anti-doublons et régénère
-                  même si tous les articles ont déjà été traités.
+    :param force: Si True, récupère tous les articles puis filtre ceux déjà
+                  traités pour éviter de régénérer les mêmes breaking news.
+                  Si False, ne récupère que les articles non encore traités.
     :return: dict avec les infos de la news, ou None si échec
     """
     logger.info("=== Génération d'une breaking news AI (force=%s) ===", force)
@@ -48,8 +50,19 @@ def generate_breaking_news(force: bool = False) -> Optional[dict]:
     try:
         # 1. Récupération des articles RSS
         if force:
-            # Mode force : récupère tous les articles (ignore le cache anti-doublons)
-            articles = rss_parser.fetch_articles(max_items=config.MAX_ARTICLES_TO_PROCESS)
+            # Mode force : récupère tous les articles puis filtre ceux déjà
+            # traités (anti-doublons), pour que chaque clic sur "Actualiser"
+            # génère des propositions réellement nouvelles.
+            all_articles = rss_parser.fetch_articles(max_items=config.MAX_ARTICLES_TO_PROCESS)
+            articles = [
+                article for article in all_articles
+                if not database.is_article_processed(article.url)
+            ]
+            logger.info(
+                "Mode force : %d articles récupérés, %d non encore traités",
+                len(all_articles),
+                len(articles),
+            )
         else:
             # Mode normal : seulement les nouveaux articles non encore traités
             articles = rss_parser.fetch_new_articles(max_items=config.MAX_ARTICLES_TO_PROCESS)
@@ -69,6 +82,14 @@ def generate_breaking_news(force: bool = False) -> Optional[dict]:
         # 3. Génération des résumés "breaking news" par l'IA pour chaque article
         proposals = []
         for i, article in enumerate(best_articles):
+            if i > 0:
+                # Espace les appels API pour respecter les limites TPM de Groq
+                delay = config.AI_GENERATION_DELAY
+                logger.info(
+                    "Pause de %ds entre les générations IA…", delay
+                )
+                time.sleep(delay)
+
             breaking_text = ai_generator.generate_tweet(
                 title=article.title,
                 url=article.url,
@@ -132,6 +153,75 @@ def generate_breaking_news(force: bool = False) -> Optional[dict]:
             len(news["secondary_proposals"]),
         )
         return news
+    finally:
+        _breaking_news_lock.release()
+
+
+def generate_proposal() -> Optional[dict]:
+    """
+    Génère une seule proposition secondaire à partir du prochain article
+    RSS non encore traité (anti-doublons).
+
+    Utilisé par le bouton 🔄 des cartes "Autres propositions" pour
+    rafraîchir une proposition sans régénérer toute la breaking news.
+
+    :return: dict avec title, url, source, summary, breaking_text,
+             ou None si aucun article disponible
+    """
+    logger.info("=== Génération d'une proposition secondaire ===")
+
+    if not _breaking_news_lock.acquire(blocking=False):
+        logger.warning(
+            "Génération de breaking news déjà en cours — proposition ignorée. "
+            "Attendez que le cycle précédent se termine."
+        )
+        return None
+
+    try:
+        # Récupère tous les articles et filtre ceux déjà traités
+        all_articles = rss_parser.fetch_articles(max_items=config.MAX_ARTICLES_TO_PROCESS)
+        new_articles = [
+            article for article in all_articles
+            if not database.is_article_processed(article.url)
+        ]
+
+        if not new_articles:
+            logger.warning("Aucun nouvel article disponible pour une proposition.")
+            return None
+
+        # Prend l'article le plus récent non traité
+        article = new_articles[0]
+
+        # Génère le résumé "breaking news" par l'IA
+        breaking_text = ai_generator.generate_tweet(
+            title=article.title,
+            url=article.url,
+            source=article.source,
+            summary=article.summary,
+        )
+
+        if not breaking_text:
+            logger.warning("Échec de la génération IA pour la proposition.")
+            return None
+
+        proposal = {
+            "title": article.title,
+            "url": article.url,
+            "source": article.source,
+            "summary": article.summary,
+            "breaking_text": breaking_text,
+        }
+
+        # Marque l'article comme traité (anti-doublons)
+        database.mark_article_processed(
+            url=article.url,
+            title=article.title,
+            source=article.source,
+            tweet_text=breaking_text,
+        )
+
+        logger.info("Proposition générée : %s", article.title[:60])
+        return proposal
     finally:
         _breaking_news_lock.release()
 

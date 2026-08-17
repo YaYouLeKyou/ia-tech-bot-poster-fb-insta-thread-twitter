@@ -24,11 +24,21 @@ TWITTER_ACCESS_SECRET = os.getenv("TWITTER_ACCESS_SECRET", "")
 TWITTER_BEARER_TOKEN = os.getenv("TWITTER_BEARER_TOKEN", "")
 
 # ─────────────────────────────────────────────────────────────
-# API LLM (OpenAI SDK compatible — DeepSeek / OpenAI)
+# API LLM (OpenAI SDK compatible — Gemini / Groq)
 # ─────────────────────────────────────────────────────────────
 LLM_API_KEY = os.getenv("LLM_API_KEY", "")
-LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.deepseek.com")
-LLM_MODEL = os.getenv("LLM_MODEL", "deepseek-chat")
+LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/")
+LLM_MODEL = os.getenv("LLM_MODEL", "gemini-3.5-flash-lite")
+# Nombre max de tokens — Gemini a un mode "thinking" qui consomme
+# des tokens avant la réponse. 2000 garantit un tweet complet.
+LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "2000"))
+
+# ─────────────────────────────────────────────────────────────
+# Fallback LLM — Groq (si Gemini est indisponible)
+# ─────────────────────────────────────────────────────────────
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_BASE_URL = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "groq/compound-mini")
 
 # ─────────────────────────────────────────────────────────────
 # API Facebook (Meta Graph API)
@@ -51,7 +61,6 @@ DEFAULT_RSS_FEEDS = [
     "https://www.frandroid.com/feed",
     # 🇬🇧 / 🇺🇸 International
     "https://techcrunch.com/category/artificial-intelligence/feed/",
-    "https://www.marktechpost.com/feed/",
     "https://venturebeat.com/category/ai/feed/",
     "https://www.theverge.com/rss/index.xml",
 ]
@@ -98,6 +107,14 @@ WEB_PORT = int(os.getenv("WEB_PORT", "5000"))
 # ─────────────────────────────────────────────────────────────
 MAX_TWEET_LENGTH = 230  # < 230 caractères, limite de sécurité
 MAX_ARTICLES_TO_PROCESS = 30  # articles maximum scannés par exécution
+
+# ─────────────────────────────────────────────────────────────
+# Génération IA — espacement des appels API
+# ─────────────────────────────────────────────────────────────
+# Délai (en secondes) entre deux appels à l'API LLM lors de la
+# génération de plusieurs propositions (anti rate-limit TPM).
+# Il est configurable via la variable d'environnement AI_GENERATION_DELAY.
+AI_GENERATION_DELAY = int(os.getenv("AI_GENERATION_DELAY", "15"))
 
 # ─────────────────────────────────────────────────────────────
 # Historique des breaking news

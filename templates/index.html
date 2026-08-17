@@ -239,68 +239,6 @@
             border-color: rgba(0, 210, 255, 0.5);
         }
 
-        .post-buttons {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin: 10px 0;
-        }
-
-        .post-buttons .btn {
-            padding: 10px 18px;
-            font-size: 0.9rem;
-            border-radius: 8px;
-            border: 1px solid transparent;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-weight: 500;
-        }
-
-        .btn-twitter {
-            background: rgba(29, 161, 242, 0.15);
-            border-color: rgba(29, 161, 242, 0.4);
-            color: #1da1f2;
-        }
-
-        .btn-twitter:hover {
-            background: rgba(29, 161, 242, 0.3);
-            box-shadow: 0 4px 15px rgba(29, 161, 242, 0.25);
-        }
-
-        .btn-facebook {
-            background: rgba(66, 103, 178, 0.15);
-            border-color: rgba(66, 103, 178, 0.4);
-            color: #4267b2;
-        }
-
-        .btn-facebook:hover {
-            background: rgba(66, 103, 178, 0.3);
-            box-shadow: 0 4px 15px rgba(66, 103, 178, 0.25);
-        }
-
-        .btn-instagram {
-            background: rgba(225, 48, 108, 0.15);
-            border-color: rgba(225, 48, 108, 0.4);
-            color: #e1306c;
-        }
-
-        .btn-instagram:hover {
-            background: rgba(225, 48, 108, 0.3);
-            box-shadow: 0 4px 15px rgba(225, 48, 108, 0.25);
-        }
-
-        .btn-all {
-            background: rgba(0, 210, 255, 0.15);
-            border-color: rgba(0, 210, 255, 0.4);
-            color: #00d2ff;
-        }
-
-        .btn-all:hover {
-            background: rgba(0, 210, 255, 0.3);
-            box-shadow: 0 4px 15px rgba(0, 210, 255, 0.25);
-        }
-
         .schedule-hint {
             color: #777;
             font-size: 0.8rem;
@@ -885,16 +823,24 @@
                 <div class="schedule-hint">Les publications automatiques auront lieu à ces heures (format UTC).</div>
             </div>
 
-            <!-- Post minute : publication immédiate sur une plateforme spécifique -->
+            <!-- Post minute : publication immédiate sur le(s) réseau(x) choisi(s) -->
             <div class="controls">
                 <div class="controls-group-title">⚡ Post minute</div>
-                <div class="post-buttons">
-                    <button onclick="postNow('twitter')" class="btn btn-twitter">🐦 Poster sur Twitter</button>
-                    <button onclick="postNow('facebook')" class="btn btn-facebook">📘 Poster sur Facebook</button>
-                    <button onclick="postNow('instagram')" class="btn btn-instagram">📸 Poster sur Instagram</button>
-                    <button onclick="postNow('all')" class="btn btn-all">📤 Poster sur toutes les plateformes</button>
-                </div>
-                <div class="schedule-hint">Génère une nouvelle breaking news et la publie immédiatement sur la plateforme sélectionnée.</div>
+                <label>Envoyer sur :</label>
+                <label class="network-check twitter-check" id="netTwitterLabel">
+                    <input type="checkbox" id="netTwitter" onchange="updateNetworkCheck(this, 'netTwitterLabel')">
+                    🐦 Twitter
+                </label>
+                <label class="network-check facebook-check" id="netFacebookLabel">
+                    <input type="checkbox" id="netFacebook" checked onchange="updateNetworkCheck(this, 'netFacebookLabel')">
+                    📘 Facebook
+                </label>
+                <label class="network-check instagram-check" id="netInstagramLabel">
+                    <input type="checkbox" id="netInstagram" onchange="updateNetworkCheck(this, 'netInstagramLabel')">
+                    📸 Instagram
+                </label>
+                <button onclick="postNow()" class="btn btn-tweet">⚡ Post Now</button>
+                <div class="schedule-hint">Génère une nouvelle breaking news et la publie immédiatement sur le(s) réseau(x) sélectionné(s).</div>
             </div>
 
             <!-- Connexions aux réseaux -->
@@ -961,7 +907,7 @@
             <div class="actions">
                 <a href="{{ latest.url }}" target="_blank" class="btn">Lire l'article complet →</a>
                 <button onclick="refreshNews()" class="btn btn-secondary">🔄 Actualiser maintenant</button>
-                <button onclick="tweetNow()" class="btn btn-tweet">🐦 Tweet Now</button>
+                <button onclick="tweetNow()" class="btn btn-tweet">⚡ Post Now</button>
             </div>
             <div class="loading" id="loading">Génération de la nouvelle breaking news en cours…</div>
         </div>
@@ -984,7 +930,7 @@
                     <div class="proposal-text">{{ proposal.breaking_text }}</div>
                     <div class="proposal-actions">
                         <a href="{{ proposal.url }}" target="_blank" class="btn btn-small">Lire →</a>
-                        <button onclick="tweetProposal({{ loop.index }})" class="btn btn-small btn-tweet">🐦 Tweeter</button>
+                        <button onclick="tweetProposal({{ loop.index }})" class="btn btn-small btn-tweet">⚡ Poster</button>
                     </div>
                 </div>
                 {% endfor %}
@@ -1017,7 +963,7 @@
 
         <footer>
             <p>🤖 Agent de veille automatique — Scraping RSS + Génération IA</p>
-            <p>Sources : Presse-Citron, Clubic, 01net, Frandroid, TechCrunch, MarkTechPost, VentureBeat, The Verge</p>
+            <p>Sources : Presse-Citron, Clubic, 01net, Frandroid, TechCrunch, VentureBeat, The Verge</p>
         </footer>
     </div>
 
@@ -1048,7 +994,7 @@
             <div class="tweet-status" id="tweetStatus"></div>
             <div class="tweet-modal-actions">
                 <button onclick="closeTweetModal()" class="btn btn-close">Annuler</button>
-                <button onclick="publishTweet()" class="btn btn-publish" id="publishBtn">Publier le tweet</button>
+                <button onclick="publishTweet()" class="btn btn-publish" id="publishBtn">Publier le post</button>
             </div>
         </div>
     </div>
@@ -1058,6 +1004,39 @@
     <script>
         const DRY_RUN = document.body.dataset.dryRun === 'true';
         let currentTweetData = null;
+
+        // Post minute : publie immédiatement sur le(s) réseau(x) choisi(s)
+        async function postNow() {
+            const network = getSelectedNetwork();
+            if (!network) {
+                showToast('❌ Sélectionnez au moins un réseau (Twitter ou Facebook)', true);
+                return;
+            }
+
+            const loading = document.getElementById('loading');
+            if (loading) loading.style.display = 'block';
+
+            try {
+                const response = await fetch('/api/tweet-now', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ network: network })
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erreur lors de la publication');
+                }
+
+                // Afficher la simulation visuelle
+                currentTweetData = data;
+                showTweetPreview(data.tweet_preview);
+            } catch (error) {
+                showToast('❌ ' + error.message, true);
+            } finally {
+                if (loading) loading.style.display = 'none';
+            }
+        }
 
         function showToast(message, isError = false) {
             const toast = document.getElementById('toast');
@@ -1148,8 +1127,27 @@
             }
         }
 
-        // Post minute : publie immédiatement sur la plateforme choisie
-        async function postNow(network) {
+        // Récupère le réseau sélectionné (twitter, facebook, instagram)
+        // Par défaut, seulement Facebook est coché
+        function getSelectedNetwork() {
+            const twitter = document.getElementById('netTwitter').checked;
+            const facebook = document.getElementById('netFacebook').checked;
+            const instagram = document.getElementById('netInstagram').checked;
+
+            if (twitter && !facebook && !instagram) return 'twitter';
+            if (!twitter && facebook && !instagram) return 'facebook';
+            if (!twitter && !facebook && instagram) return 'instagram';
+            if (twitter && facebook && !instagram) return 'both';
+            if (twitter && !facebook && instagram) return 'both';
+            if (!twitter && facebook && instagram) return 'both';
+            if (twitter && facebook && instagram) return 'all';
+            // Par défaut, si rien n'est coché, retourne Facebook
+            return 'facebook';
+        }
+
+        // Post minute : publie immédiatement sur le réseau choisi
+        async function postNow() {
+            const network = getSelectedNetwork();
             const loading = document.getElementById('loading');
             if (loading) {
                 loading.style.display = 'block';
@@ -1157,7 +1155,8 @@
                     'twitter': '🐦 Envoi du post Twitter…',
                     'facebook': '📘 Envoi du post Facebook…',
                     'instagram': '📸 Envoi du post Instagram…',
-                    'all': '📤 Envoi du post sur toutes les plateformes…'
+                    'both': '📤 Envoi du post sur les réseaux sélectionnés…',
+                    'all': '📤 Envoi du post sur tous les réseaux…'
                 };
                 loading.textContent = networkLabels[network] || '⏳ Publication en cours…';
             }
@@ -1374,27 +1373,46 @@
         }
 
         async function tweetProposal(index) {
-            // Utilise la proposition secondaire pour le tweet
+            // Utilise la proposition secondaire pour le post
             const card = document.getElementById('proposal-' + index);
             if (!card) return;
 
             const title = card.querySelector('h4').textContent;
             const text = card.querySelector('.proposal-text').textContent;
             const url = card.querySelector('.proposal-actions a').href;
+            const source = card.querySelector('.proposal-meta span').textContent.replace('📰 ', '');
 
-            // Affiche la simulation du tweet
-            currentTweetData = {
-                tweet_preview: {
-                    text: text,
-                    title: title,
-                    url: url,
-                    source: card.querySelector('.proposal-meta span').textContent.replace('📰 ', ''),
-                    published_at: new Date().toISOString(),
-                    character_count: text.length
-                },
-                dry_run: DRY_RUN
-            };
-            showTweetPreview(currentTweetData.tweet_preview);
+            // Envoie le post en direct sur Facebook (réseau par défaut)
+            const loading = document.getElementById('loading');
+            if (loading) {
+                loading.style.display = 'block';
+                loading.textContent = '📘 Envoi du post Facebook…';
+            }
+
+            try {
+                const response = await fetch('/api/tweet-now', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ network: 'facebook' })
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erreur lors de la publication');
+                }
+
+                if (loading) {
+                    setTimeout(() => {
+                        if (loading) loading.style.display = 'none';
+                    }, 800);
+                }
+
+                currentTweetData = data;
+                showTweetPreview(data.tweet_preview);
+            } catch (error) {
+                if (loading) loading.style.display = 'none';
+                showToast('❌ ' + error.message, true);
+            }
         }
 
         async function tweetNow() {
@@ -1476,7 +1494,7 @@
                 status.style.display = 'block';
                 publishBtn.textContent = 'Simuler la publication';
             } else {
-                publishBtn.textContent = 'Publier le tweet';
+                publishBtn.textContent = 'Publier le post';
             }
 
             modal.classList.add('active');
@@ -1512,10 +1530,10 @@
                 const network = data.network || 'facebook';
 
                 const parts = [];
-                if (network === 'twitter' || network === 'all') {
+                if (network === 'twitter' || network === 'both' || network === 'all') {
                     parts.push(data.published ? '🐦 Twitter envoyé' : '🐦 Twitter non envoyé');
                 }
-                if (network === 'facebook' || network === 'all') {
+                if (network === 'facebook' || network === 'both' || network === 'all') {
                     if (data.facebook_published) {
                         parts.push('📘 Facebook envoyé avec succès');
                     } else if (data.facebook_error) {
@@ -1524,7 +1542,7 @@
                         parts.push('📘 Facebook non envoyé');
                     }
                 }
-                if (network === 'instagram' || network === 'all') {
+                if (network === 'instagram' || network === 'both' || network === 'all') {
                     if (data.instagram_published) {
                         parts.push('📸 Instagram envoyé');
                     } else if (data.instagram_error) {
