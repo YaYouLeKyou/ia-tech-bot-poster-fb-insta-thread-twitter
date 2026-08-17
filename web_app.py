@@ -112,9 +112,11 @@ def index():
     current_interval = config.NEWS_INTERVAL_HOURS
     schedule_times = config.SCHEDULE_TIMES
 
-    # Vérifie si Twitter et Facebook sont configurés
+    # Vérifie si les réseaux sont configurés
     twitter_configured = bool(config.TWITTER_API_KEY and config.TWITTER_API_SECRET)
     facebook_configured = bool(config.FB_PAGE_ACCESS_TOKEN and config.FACEBOOK_PAGE_ID)
+    instagram_configured = bool(config.FB_PAGE_ACCESS_TOKEN and config.INSTAGRAM_ACCOUNT_ID)
+    threads_configured = bool(config.THREADS_ACCESS_TOKEN and config.THREADS_USER_ID)
 
     return render_template(
         "index.html",
@@ -127,6 +129,8 @@ def index():
         schedule_times=schedule_times,
         twitter_configured=twitter_configured,
         facebook_configured=facebook_configured,
+        instagram_configured=instagram_configured,
+        threads_configured=threads_configured,
         dry_run=config.DRY_RUN,
         test_on_startup=config.TEST_ON_STARTUP,
         max_history_size=config.MAX_HISTORY_SIZE,

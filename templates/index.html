@@ -125,10 +125,22 @@
             color: #ffad1f;
         }
 
+        .status-badge.instagram {
+            background: rgba(225, 48, 108, 0.15);
+            border: 1px solid rgba(225, 48, 108, 0.4);
+            color: #e1306c;
+        }
+
         .status-badge.threads-off {
             background: rgba(255, 173, 31, 0.15);
             border: 1px solid rgba(255, 173, 31, 0.4);
             color: #ffad1f;
+        }
+
+        .status-badge.threads {
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            color: #ffffff;
         }
 
         @keyframes pulse {
@@ -890,8 +902,16 @@
                 {% else %}
                 <span class="status-badge facebook-off">❌ Facebook non configuré</span>
                 {% endif %}
+                {% if instagram_configured %}
+                <span class="status-badge instagram">✅ Instagram connecté</span>
+                {% else %}
                 <span class="status-badge instagram-off">⏸️ Instagram désactivé</span>
+                {% endif %}
+                {% if threads_configured %}
+                <span class="status-badge threads">✅ Threads connecté</span>
+                {% else %}
                 <span class="status-badge threads-off">⏸️ Threads désactivé</span>
+                {% endif %}
                 <span class="status-badge schedule">🕐 Publication : {{ schedule_times|join(' & ') }} UTC</span>
             </div>
         </header>
@@ -1095,7 +1115,7 @@
     <script>
         const DRY_RUN = document.body.dataset.dryRun === 'true';
         let currentTweetData = null;
-        let activeNetworks = new Set(['facebook', 'threads']);
+        let activeNetworks = new Set(['facebook', 'instagram', 'threads']);
 
         function updateNetworkButtons() {
             ['twitter', 'facebook', 'instagram', 'threads'].forEach(network => {
