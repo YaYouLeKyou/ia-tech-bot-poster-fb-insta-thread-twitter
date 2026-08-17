@@ -26,7 +26,8 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 # Fréquences disponibles (en heures)
-AVAILABLE_INTERVALS = [2, 4, 8, 12, 24, 48]
+# 0 = désactivé (publication uniquement aux heures planifiées)
+AVAILABLE_INTERVALS = [0, 2, 4, 6, 8, 12, 24, 48]
 
 
 def _scheduled_publish() -> None:
@@ -111,9 +112,11 @@ def index():
     current_interval = config.NEWS_INTERVAL_HOURS
     schedule_times = config.SCHEDULE_TIMES
 
-    # Vérifie si Twitter et Facebook sont configurés
+    # Vérifie si les réseaux sont configurés
     twitter_configured = bool(config.TWITTER_API_KEY and config.TWITTER_API_SECRET)
     facebook_configured = bool(config.FB_PAGE_ACCESS_TOKEN and config.FACEBOOK_PAGE_ID)
+    instagram_configured = bool(config.FB_PAGE_ACCESS_TOKEN and config.INSTAGRAM_ACCOUNT_ID)
+    threads_configured = bool(config.THREADS_ACCESS_TOKEN and config.THREADS_USER_ID)
 
     return render_template(
         "index.html",
@@ -126,8 +129,11 @@ def index():
         schedule_times=schedule_times,
         twitter_configured=twitter_configured,
         facebook_configured=facebook_configured,
+        instagram_configured=instagram_configured,
+        threads_configured=threads_configured,
         dry_run=config.DRY_RUN,
         test_on_startup=config.TEST_ON_STARTUP,
+        max_history_size=config.MAX_HISTORY_SIZE,
     )
 
 
@@ -147,25 +153,77 @@ def api_history():
     return jsonify(history)
 
 
-@app.route("/api/refresh")
+@app.route("/api/refresh", methods=["POST"])
 def api_refresh():
-    """API JSON : force la génération d'une nouvelle breaking news."""
-    news = news_service.generate_breaking_news()
+    """
+    API JSON : force la génération d'une nouvelle breaking news.
+    Filtre les articles déjà traités pour toujours renvoyer du contenu neuf.
+    """
+    news = news_service.generate_breaking_news(force=True)
     if not news:
-        # Vérifie si une génération est déjà en cours
         latest = news_service.get_latest_news()
         if latest:
             return jsonify({
-                "error": "Une génération est déjà en cours. Veuillez patienter quelques instants.",
-                "latest": latest,
+                "success": False,
+                "error": "Aucun nouvel article disponible.",
+                "message": "Tous les articles RSS ont déjà été publiés. "
+                           "Patientez jusqu'à de nouveaux articles, ou "
+                           "effacez l'historique pour tout republier.",
+                "latest_title": latest["title"][:50],
             }), 409
-        return jsonify({"error": "Échec de la génération"}), 500
+        return jsonify({
+            "error": "Échec de la génération d'article.",
+            "detail": "Tous les flux RSS ont été épuisés ou inaccessible.",
+        }), 404
     return jsonify(news)
+
+
+@app.route("/api/refresh-proposal")
+def api_refresh_proposal():
+    """
+    API JSON : génère une seule proposition secondaire (article non traité).
+    Utilisé par le bouton 🔄 des cartes "Autres propositions".
+    """
+    proposal = news_service.generate_proposal()
+    if not proposal:
+        latest = news_service.get_latest_news()
+        if latest:
+            return jsonify({
+                "success": False,
+                "error": "Aucun nouvel article disponible.",
+                "message": "Tous les articles RSS ont déjà été publiés. "
+                           "Patientez jusqu'à de nouveaux articles, ou "
+                           "effacez l'historique pour tout republier.",
+                "latest_title": latest["title"][:50],
+            }), 409
+        return jsonify({
+            "error": "Échec de la génération de la proposition.",
+            "detail": "Tous les flux RSS ont été épuisés ou inaccessible.",
+        }), 404
+    return jsonify(proposal)
+
+
+@app.route("/api/clear-history", methods=["POST"])
+def api_clear_history():
+    """API : vide l'historique des breaking news et le cache anti-doublons."""
+    removed_news = database.clear_breaking_news_history()
+    removed_processed = database.clear_processed_articles()
+    logger.info(
+        "Historique vidé : %d breaking news, %d articles traités supprimés",
+        removed_news,
+        removed_processed,
+    )
+    return jsonify({
+        "success": True,
+        "message": "Historique effacé avec succès.",
+        "removed_news": removed_news,
+        "removed_processed": removed_processed,
+    })
 
 
 @app.route("/api/interval", methods=["POST"])
 def api_set_interval():
-    """API : change la fréquence de mise à jour (en heures)."""
+    """API : change la fréquence de mise à jour (en heures). 0 = désactivé."""
     data = request.get_json(silent=True) or {}
     try:
         interval = int(data.get("interval", 2))
@@ -173,11 +231,11 @@ def api_set_interval():
         return jsonify({"error": "Intervalle invalide"}), 400
 
     if interval not in AVAILABLE_INTERVALS:
-        return jsonify({"error": f"Intervalle non autorisé. Choisissez parmi : {AVAILABLE_INTERVALS}"}), 400
+        return jsonify({"error": f"Intervalle non autorisée. Choisissez parmi : {AVAILABLE_INTERVALS}"}), 400
 
     config.NEWS_INTERVAL_HOURS = interval
-    logger.info("Fréquence de mise à jour changée : toutes les %d heures", interval)
-    return jsonify({"success": True, "interval": interval})
+    logger.info("Fréquence de mise à jour changée : %s", "désactivée" if interval == 0 else f"toutes les {interval} heures")
+    return jsonify({"success": True, "interval": interval, "label": "Désactivé" if interval == 0 else f"Toutes les {interval} heures"})
 
 
 @app.route("/api/schedule", methods=["POST"])
@@ -208,30 +266,66 @@ def api_set_schedule():
     return jsonify({"success": True, "times": valid_times})
 
 
+def _build_long_post_message(news: dict) -> str:
+    title = (news.get("title") or "").strip()
+    summary = (news.get("summary") or "").strip()
+    url = (news.get("url") or "").strip()
+
+    parts = []
+    if title:
+        parts.append(title)
+    if summary:
+        parts.append(summary)
+    if url:
+        parts.append(url)
+
+    message = "\n\n".join(parts)
+    return message.strip()
+
+
 @app.route("/api/tweet-now", methods=["POST"])
 def api_tweet_now():
     """
-    API : génère une nouvelle breaking news et la publie sur le(s) réseau(x)
-    choisi(s) : "twitter", "facebook" ou "both" (défaut).
-    Retourne aussi la simulation visuelle du tweet pour validation.
-    Gère automatiquement le mode gratuit (crédits épuisés).
+    API : génère une nouvelle breaking news et la publie sur les
+    plateformes sélectionnées : twitter, facebook, instagram, threads.
+    Retourne la simulation visuelle et le statut de publication.
     """
     data = request.get_json(silent=True) or {}
-    network = data.get("network", "all")
-    if network not in ("twitter", "facebook", "instagram", "both", "all"):
-        network = "all"
+    raw_network = data.get("network", "facebook")
+    if isinstance(raw_network, str):
+        networks = [n.strip() for n in raw_network.split(",") if n.strip()]
+    else:
+        networks = [str(raw_network)]
+
+    valid_networks = [n for n in networks if n in ("twitter", "facebook", "instagram", "threads")]
+    if not valid_networks:
+        valid_networks = ["facebook"]
+
+    post_twitter = "twitter" in valid_networks
+    post_facebook = "facebook" in valid_networks
+    post_instagram = "instagram" in valid_networks
+    post_threads = "threads" in valid_networks
+
+    progress = []
+    result = {
+        "success": True,
+        "network": ",".join(valid_networks),
+        "progress": progress,
+    }
 
     # 1. Génération de la breaking news
-    news = news_service.generate_breaking_news()
+    news = news_service.generate_breaking_news(force=True)
     if not news:
-        # Vérifie si une génération est déjà en cours
         latest = news_service.get_latest_news()
         if latest:
             return jsonify({
-                "error": "Une génération est déjà en cours. Veuillez patienter quelques instants.",
-                "latest": latest,
+                "error": "Article déjà publié récemment.",
+                "detail": "La dernière breaking news a déjà été publiée. Patientez jusqu'à de nouveaux articles RSS.",
+                "latest_title": latest["title"][:50],
             }), 409
-        return jsonify({"error": "Échec de la génération de la breaking news"}), 500
+        return jsonify({"error": "Aucun article disponible."}), 404
+
+    progress.append({"step": "generation", "message": "Article généré avec succès", "done": True})
 
     # 2. Simulation visuelle du tweet
     tweet_preview = {
@@ -242,39 +336,62 @@ def api_tweet_now():
         "published_at": news["published_at"],
         "character_count": len(news["breaking_text"]),
     }
+    result["tweet_preview"] = tweet_preview
+    result["news"] = news
 
-    # 3. Publication sur Twitter (si demandé, configuré et pas en dry-run)
+    # 3. Publication sur Twitter (seulement si explicitement demandé)
     published = False
     free_mode = False
-    if network in ("twitter", "both"):
+    if post_twitter:
+        progress.append({"step": "twitter", "message": "Envoi du post Twitter…", "done": False})
         if not config.DRY_RUN and config.TWITTER_API_KEY:
             try:
                 twitter = twitter_client.TwitterClient()
                 if twitter.configure():
                     published = twitter.post_tweet(news["breaking_text"])
-                    # Détecte si le mode gratuit a été activé (crédits épuisés)
                     free_mode = twitter._credits_depleted
                     logger.info("Tweet publié : %s (mode gratuit : %s)", published, free_mode)
+                    progress[-1]["done"] = True
+                    progress[-1]["success"] = published
+                else:
+                    progress[-1]["done"] = True
+                    progress[-1]["success"] = False
+                    progress[-1]["error"] = "Twitter non configuré"
             except Exception as exc:  # noqa: BLE001
                 logger.error("Erreur lors de la publication Twitter : %s", exc)
+                progress[-1]["done"] = True
+                progress[-1]["success"] = False
+                progress[-1]["error"] = str(exc)
         else:
-            logger.info("Mode dry-run ou Twitter non configuré — tweet non publié réellement")
+            progress[-1]["done"] = True
+            progress[-1]["success"] = False
+            progress[-1]["error"] = "Mode dry-run ou Twitter non configuré"
+    else:
+        progress.append({"step": "twitter", "message": "Twitter non sélectionné", "done": True, "skipped": True})
 
-    # 4. Publication sur Facebook (si demandé, configuré et pas en dry-run)
+    result["published"] = published
+    result["free_mode"] = free_mode
+
+    # 4. Publication sur Facebook (seulement si explicitement demandé)
     facebook_published = False
     facebook_error = None
-    if network in ("facebook", "both", "all"):
+    if post_facebook:
+        progress.append({"step": "facebook", "message": "Envoi du post Facebook…", "done": False})
         if not config.DRY_RUN and config.FB_PAGE_ACCESS_TOKEN and config.FACEBOOK_PAGE_ID:
             try:
                 facebook = facebook_client.FacebookClient()
                 if facebook.configure():
+                    facebook_message = _build_long_post_message(news)
                     facebook_published = facebook.post_to_page(
-                        message=news["breaking_text"],
+                        message=facebook_message,
                         link=news.get("url", ""),
                     )
                     logger.info("Post Facebook publié : %s", facebook_published)
+                    progress[-1]["done"] = True
+                    progress[-1]["success"] = facebook_published
                     if not facebook_published:
                         facebook_error = "Échec de la publication Facebook — voir les logs serveur"
+                        progress[-1]["error"] = facebook_error
                 else:
                     facebook_error = (
                         "Token Facebook/Instagram expiré ou invalide. "
@@ -283,26 +400,53 @@ def api_tweet_now():
                         "avec les permissions pages_read_engagement et pages_manage_posts, "
                         "puis redémarrez l'application."
                     )
+                    progress[-1]["done"] = True
+                    progress[-1]["success"] = False
+                    progress[-1]["error"] = facebook_error
             except Exception as exc:  # noqa: BLE001
                 logger.error("Erreur lors de la publication Facebook : %s", exc)
                 facebook_error = str(exc)
+                progress[-1]["done"] = True
+                progress[-1]["success"] = False
+                progress[-1]["error"] = facebook_error
         else:
-            logger.info("Mode dry-run ou Facebook non configuré — post non publié réellement")
+            progress[-1]["done"] = True
+            progress[-1]["success"] = False
+            if config.DRY_RUN:
+                progress[-1]["error"] = "Mode dry-run activé"
+            elif not config.FB_PAGE_ACCESS_TOKEN or not config.FACEBOOK_PAGE_ID:
+                progress[-1]["error"] = "Facebook non configuré"
+    else:
+        progress.append({"step": "facebook", "message": "Facebook non sélectionné", "done": True, "skipped": True})
 
-    # 5. Publication sur Instagram (si demandé, configuré et pas en dry-run)
+    result["facebook_published"] = facebook_published
+    result["facebook_error"] = facebook_error
+
+    # 5. Publication sur Instagram (seulement si explicitement demandé)
     instagram_published = False
     instagram_error = None
-    if network in ("instagram", "both", "all"):
+    if post_instagram:
+        progress.append({"step": "instagram", "message": "Envoi du post Instagram…", "done": False})
         if not config.DRY_RUN and config.FB_PAGE_ACCESS_TOKEN and config.INSTAGRAM_ACCOUNT_ID:
             try:
                 facebook = facebook_client.FacebookClient()
                 if facebook.configure():
+                    instagram_image = facebook_client.get_valid_instagram_image(
+                        caption=news["breaking_text"],
+                        user_image_url=news.get("image"),
+                        title=news.get("title", ""),
+                    )
+                    instagram_message = _build_long_post_message(news)
                     instagram_published = facebook.post_to_instagram(
-                        message=news["breaking_text"],
+                        message=instagram_message,
+                        image_url=instagram_image,
                     )
                     logger.info("Post Instagram publié : %s", instagram_published)
+                    progress[-1]["done"] = True
+                    progress[-1]["success"] = instagram_published
                     if not instagram_published:
                         instagram_error = "Échec de la publication Instagram — voir les logs serveur"
+                        progress[-1]["error"] = instagram_error
                 else:
                     instagram_error = (
                         "Token Instagram expiré ou invalide. "
@@ -311,25 +455,88 @@ def api_tweet_now():
                         "avec les permissions pages_read_engagement et pages_manage_posts, "
                         "puis redémarrez l'application."
                     )
+                    progress[-1]["done"] = True
+                    progress[-1]["success"] = False
+                    progress[-1]["error"] = instagram_error
             except Exception as exc:  # noqa: BLE001
                 logger.error("Erreur lors de la publication Instagram : %s", exc)
                 instagram_error = str(exc)
+                progress[-1]["done"] = True
+                progress[-1]["success"] = False
+                progress[-1]["error"] = instagram_error
         else:
-            logger.info("Mode dry-run ou Instagram non configuré — post non publié réellement")
+            progress[-1]["done"] = True
+            progress[-1]["success"] = False
+            if config.DRY_RUN:
+                progress[-1]["error"] = "Mode dry-run activé"
+            elif not config.INSTAGRAM_ACCOUNT_ID:
+                progress[-1]["error"] = "Instagram non configuré"
+    else:
+        progress.append({"step": "instagram", "message": "Instagram non sélectionné", "done": True, "skipped": True})
 
-    return jsonify({
-        "success": True,
-        "news": news,
-        "tweet_preview": tweet_preview,
-        "published": published,
-        "facebook_published": facebook_published,
-        "facebook_error": facebook_error,
-        "instagram_published": instagram_published,
-        "instagram_error": instagram_error,
-        "network": network,
-        "dry_run": config.DRY_RUN,
-        "free_mode": free_mode,
-    })
+    result["instagram_published"] = instagram_published
+    result["instagram_error"] = instagram_error
+
+    # 6. Publication sur Threads (seulement si explicitement demandé)
+    threads_published = False
+    threads_error = None
+    if post_threads:
+        progress.append({"step": "threads", "message": "Envoi du post Threads…", "done": False})
+        if not config.DRY_RUN and config.THREADS_ACCESS_TOKEN and config.THREADS_USER_ID:
+            try:
+                facebook = facebook_client.FacebookClient()
+                if facebook.configure():
+                    threads_published = facebook.post_to_threads(
+                        message=news["breaking_text"],
+                    )
+                    logger.info("Post Threads publié : %s", threads_published)
+                    progress[-1]["done"] = True
+                    progress[-1]["success"] = threads_published
+                    if not threads_published:
+                        threads_error = "Échec de la publication Threads — voir les logs serveur"
+                        progress[-1]["error"] = threads_error
+                else:
+                    threads_error = (
+                        "Token Threads expiré ou invalide. "
+                        "Générez un nouveau Threads Access Token sur "
+                        "https://developers.facebook.com/tools/access-token/ "
+                        "avec les permissions threads_basic et threads_content_publish, "
+                        "puis redémarrez l'application."
+                    )
+                    progress[-1]["done"] = True
+                    progress[-1]["success"] = False
+                    progress[-1]["error"] = threads_error
+            except Exception as exc:  # noqa: BLE001
+                logger.error("Erreur lors de la publication Threads : %s", exc)
+                threads_error = str(exc)
+                progress[-1]["done"] = True
+                progress[-1]["success"] = False
+                progress[-1]["error"] = threads_error
+        else:
+            progress[-1]["done"] = True
+            progress[-1]["success"] = False
+            if config.DRY_RUN:
+                progress[-1]["error"] = "Mode dry-run activé"
+            elif not config.THREADS_USER_ID or not config.THREADS_ACCESS_TOKEN:
+                progress[-1]["error"] = "Threads non configuré"
+    else:
+        progress.append({"step": "threads", "message": "Threads non sélectionné", "done": True, "skipped": True})
+
+    result["threads_published"] = threads_published
+    result["threads_error"] = threads_error
+    result["dry_run"] = config.DRY_RUN
+
+    # Message final de progression
+    if post_facebook or post_threads or post_twitter or post_instagram:
+        has_success = (post_facebook and facebook_published) or (post_threads and threads_published) or (post_twitter and published) or (post_instagram and instagram_published)
+        if has_success:
+            progress.append({"step": "done", "message": "Publication terminée avec succès !", "done": True, "final": True})
+        else:
+            progress.append({"step": "done", "message": "Publication terminée (partielle)", "done": True, "final": True})
+    else:
+        progress.append({"step": "done", "message": "Publication échouée", "done": True, "final": True, "error": True})
+
+    return jsonify(result)
 
 
 @app.route("/api/twitter/status")

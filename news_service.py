@@ -86,6 +86,7 @@ def generate_breaking_news() -> Optional[dict]:
                 "source": article.source,
                 "summary": article.summary,
                 "breaking_text": breaking_text,
+                "image": article.image,
             })
 
         if not proposals:
@@ -102,6 +103,7 @@ def generate_breaking_news() -> Optional[dict]:
             "breaking_text": proposals[0]["breaking_text"],
             "published_at": now,
             "secondary_proposals": proposals[1:],
+            "image": proposals[0].get("image"),
         }
 
         # 5. Stockage en base

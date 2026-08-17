@@ -34,11 +34,41 @@ class Article:
     source: str
     summary: str = ""
     published: Optional[datetime] = None
+    image: Optional[str] = None
 
     @property
     def is_valid(self) -> bool:
         """Un article est valide s'il a un titre et une URL."""
         return bool(self.title and self.url)
+
+
+def _extract_entry_image(entry) -> Optional[str]:
+    """Essaie d'extraire une URL d'image depuis une entrée feedparser."""
+    candidates = []
+
+    if hasattr(entry, "media_content") and entry.media_content:
+        for media in entry.media_content:
+            if isinstance(media, dict):
+                candidates.append(media.get("href") or media.get("url"))
+
+    if hasattr(entry, "enclosures") and entry.enclosures:
+        for enc in entry.enclosures:
+            if isinstance(enc, dict):
+                href = enc.get("href") or enc.get("url")
+                if href:
+                    candidates.append(href)
+
+    image = entry.get("image") if hasattr(entry, "get") else getattr(entry, "image", None)
+    if isinstance(image, dict):
+        candidates.append(image.get("href") or image.get("url"))
+    elif isinstance(image, str):
+        candidates.append(image)
+
+    for url in candidates:
+        if isinstance(url, str) and url.startswith("http"):
+            return url
+
+    return None
 
 
 def _parse_date(published_parsed: tuple) -> Optional[datetime]:
@@ -141,6 +171,7 @@ def fetch_articles(max_items: int = None) -> List[Article]:
                 url = entry.get("link", "").strip()
                 summary = _clean_summary(entry.get("summary", ""))
                 published = _parse_date(entry.get("published_parsed"))
+                image = _extract_entry_image(entry)
 
                 article = Article(
                     title=title,
@@ -148,6 +179,7 @@ def fetch_articles(max_items: int = None) -> List[Article]:
                     source=source_name,
                     summary=summary,
                     published=published,
+                    image=image,
                 )
                 if article.is_valid:
                     articles.append(article)

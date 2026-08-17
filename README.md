@@ -1,6 +1,6 @@
 # 🤖 Agent Twitter — Veille IA & Tech
 
-Agent IA autonome qui surveille les actualités **IA & Tech** via des flux RSS, génère un tweet en français optimisé par **DeepSeek/OpenAI**, et le publie automatiquement sur **Twitter/X** — **2 fois par jour**.
+Agent IA autonome qui surveille les actualités **IA & Tech** via des flux RSS, génère un tweet en français optimisé par **DeepSeek/OpenAI**, et le publie automatiquement sur **Twitter/X**, **Facebook**, **Instagram** et **Threads** — **jusqu'à 4 fois par jour** par défaut.
 
 ## ✨ Fonctionnalités
 
@@ -10,7 +10,12 @@ Agent IA autonome qui surveille les actualités **IA & Tech** via des flux RSS, 
 | 🧠 **IA de rédaction** | Tweet en français, ≤ 230 caractères, 2 hashtags ciblés (#IA #Tech) |
 | 💾 **Anti-doublons** | Base SQLite locale (`news_bot.db`) — aucun article republié |
 | 🐦 **Publication** | API Twitter V2 via `tweepy` (OAuth 1.0a) |
-| ⏰ **Planification** | 2 tweets/jour — défaut **08:30 & 17:30 UTC** |
+| 📘 **Facebook** | Publication automatique avec lien + résumé long |
+| 📸 **Instagram** | Publication avec image unique par article (RSS ou fallback) + résumé long |
+| 🔗 **Threads** | Publication automatique avec résumé long |
+| 🕐 **Planification** | Jusqu'à 4 publications/jour aux heures fixes UTC, ou par intervalle |
+| 🔄 **Interface web** | Dashboard Flask pour publier maintenant, modifier les heures, changer l'intervalle |
+| ⏰ **Post minute** | Publication immédiate sur les plateformes sélectionnées |
 | 🔄 **Déploiement 24/7** | Background Worker Render / Railway (`Procfile` inclus) |
 
 ## 📁 Structure du projet
@@ -20,9 +25,13 @@ agent-twitter/
 ├── main.py            # Orchestrateur + boucle schedule + logs
 ├── config.py           # Clés API, flux RSS, planification, prompts
 ├── database.py         # SQLite anti-doublons (news_bot.db)
-├── rss_parser.py       # Extraction RSS via feedparser
+├── rss_parser.py       # Extraction RSS via feedparser + images
 ├── ai_generator.py     # Génération tweet via DeepSeek/OpenAI
 ├── twitter_client.py   # Publication Twitter API V2 (tweepy)
+├── facebook_client.py  # Publication Facebook/Instagram/Threads
+├── web_app.py          # Dashboard Flask + API REST
+├── templates/
+│   └── index.html      # Interface web
 ├── requirements.txt    # Dépendances Python
 ├── .env.example        # Modèle de variables d'environnement
 ├── Procfile            # worker: python main.py (Render/Railway)
@@ -64,6 +73,8 @@ Renseignez ensuite le fichier `.env` :
 | `FB_PAGE_ACCESS_TOKEN` | Page Access Token Meta (permanent, avec permissions `pages_read_engagement`, `pages_manage_posts`) |
 | `FACEBOOK_PAGE_ID` | ID de la page Facebook |
 | `INSTAGRAM_ACCOUNT_ID` | ID du compte Instagram Business (optionnel) |
+| `THREADS_ACCESS_TOKEN` | Token Threads (optionnel) |
+| `THREADS_USER_ID` | ID utilisateur Threads (optionnel) |
 
 ### 3. Test rapide
 
@@ -126,21 +137,34 @@ python main.py
 
 ## ⏰ Planification
 
-Le bot tourne **24/7** et publie **2 tweets par jour** :
+Le bot publie automatiquement aux **heures fixes** ou par **intervalle** :
 
-| Paramètre | Valeur par défaut |
-|---|---|
-| Heure 1 | **08:30 UTC** |
-| Heure 2 | **17:30 UTC** |
+| Mode | Défaut | Détail |
+|---|---|---|
+| 🕐 **Heures fixes** | **08:00, 12:00, 17:00, 20:00 UTC** | Jusqu'à 4 publications/jour aux heures définies |
+| 🔄 **Intervalle** | Désactivé par défaut | Publications supplémentaires toutes les N heures |
 
-Personnalisation dans `.env` :
+### Configuration
+
+Dans `.env` :
 
 ```env
-SCHEDULE_TIMES=08:30,17:30
+# Heures fixes (UTC)
+SCHEDULE_TIMES=08:00,12:00,17:00,20:00
+
+# Intervalle (0 = désactivé, sinon toutes les N heures)
+NEWS_INTERVAL_HOURS=0
 ```
 
 > **Important** : les heures sont en **UTC**. Le script convertit automatiquement
 > vers l'heure locale du serveur hébergeur.
+
+### Interface web
+
+Le dashboard permet de :
+- Modifier les heures de publication (jusqu'à 4)
+- Activer/désactiver le mode intervalle
+- Publier immédiatement sur les plateformes sélectionnées
 
 ## 🌐 Déploiement continu (Render / Railway)
 
@@ -156,7 +180,8 @@ Le fichier `render.yaml` configure tout automatiquement via **Blueprint** :
 Variables à renseigner manuellement dans le dashboard Render :
 `TWITTER_API_KEY`, `TWITTER_API_SECRET`, `TWITTER_ACCESS_TOKEN`,
 `TWITTER_ACCESS_SECRET`, `TWITTER_BEARER_TOKEN`, `LLM_API_KEY`,
-`FB_PAGE_ACCESS_TOKEN`, `FACEBOOK_PAGE_ID`, `INSTAGRAM_ACCOUNT_ID`
+`FB_PAGE_ACCESS_TOKEN`, `FACEBOOK_PAGE_ID`, `INSTAGRAM_ACCOUNT_ID`,
+`THREADS_ACCESS_TOKEN`, `THREADS_USER_ID`
 
 ### Option 2 — Railway
 
