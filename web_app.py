@@ -148,7 +148,7 @@ def api_history():
     return jsonify(history)
 
 
-@app.route("/api/refresh")
+@app.route("/api/refresh", methods=["POST"])
 def api_refresh():
     """
     API JSON : force la génération d'une nouvelle breaking news.
@@ -349,48 +349,52 @@ def api_tweet_now():
     result["published"] = published
     result["free_mode"] = free_mode
 
-    # 4. Publication sur Facebook (prioritaire)
+    # 4. Publication sur Facebook (seulement si explicitement demandé)
     facebook_published = False
     facebook_error = None
-    progress.append({"step": "facebook", "message": "Envoi du post Facebook…", "done": False})
-    if not config.DRY_RUN and config.FB_PAGE_ACCESS_TOKEN and config.FACEBOOK_PAGE_ID:
-        try:
-            facebook = facebook_client.FacebookClient()
-            if facebook.configure():
-                facebook_published = facebook.post_to_page(
-                    message=news["breaking_text"],
-                    link=news.get("url", ""),
-                )
-                logger.info("Post Facebook publié : %s", facebook_published)
-                progress[-1]["done"] = True
-                progress[-1]["success"] = facebook_published
-                if not facebook_published:
-                    facebook_error = "Échec de la publication Facebook — voir les logs serveur"
+    if post_facebook:
+        progress.append({"step": "facebook", "message": "Envoi du post Facebook…", "done": False})
+        if not config.DRY_RUN and config.FB_PAGE_ACCESS_TOKEN and config.FACEBOOK_PAGE_ID:
+            try:
+                facebook = facebook_client.FacebookClient()
+                if facebook.configure():
+                    facebook_published = facebook.post_to_page(
+                        message=news["breaking_text"],
+                        link=news.get("url", ""),
+                    )
+                    logger.info("Post Facebook publié : %s", facebook_published)
+                    progress[-1]["done"] = True
+                    progress[-1]["success"] = facebook_published
+                    if not facebook_published:
+                        facebook_error = "Échec de la publication Facebook — voir les logs serveur"
+                        progress[-1]["error"] = facebook_error
+                else:
+                    facebook_error = (
+                        "Token Facebook/Instagram expiré ou invalide. "
+                        "Générez un nouveau Page Access Token sur "
+                        "https://developers.facebook.com/tools/access-token/ "
+                        "avec les permissions pages_read_engagement et pages_manage_posts, "
+                        "puis redémarrez l'application."
+                    )
+                    progress[-1]["done"] = True
+                    progress[-1]["success"] = False
                     progress[-1]["error"] = facebook_error
-            else:
-                facebook_error = (
-                    "Token Facebook/Instagram expiré ou invalide. "
-                    "Générez un nouveau Page Access Token sur "
-                    "https://developers.facebook.com/tools/access-token/ "
-                    "avec les permissions pages_read_engagement et pages_manage_posts, "
-                    "puis redémarrez l'application."
-                )
+            except Exception as exc:  # noqa: BLE001
+                logger.error("Erreur lors de la publication Facebook : %s", exc)
+                facebook_error = str(exc)
                 progress[-1]["done"] = True
                 progress[-1]["success"] = False
                 progress[-1]["error"] = facebook_error
-        except Exception as exc:  # noqa: BLE001
-            logger.error("Erreur lors de la publication Facebook : %s", exc)
-            facebook_error = str(exc)
+        else:
             progress[-1]["done"] = True
             progress[-1]["success"] = False
-            progress[-1]["error"] = facebook_error
+            if config.DRY_RUN:
+                progress[-1]["error"] = "Mode dry-run activé"
+            elif not config.FB_PAGE_ACCESS_TOKEN or not config.FACEBOOK_PAGE_ID:
+                progress[-1]["error"] = "Facebook non configuré"
     else:
-        progress[-1]["done"] = True
-        progress[-1]["success"] = False
-        if config.DRY_RUN:
-            progress[-1]["error"] = "Mode dry-run activé"
-        elif not config.FB_PAGE_ACCESS_TOKEN or not config.FACEBOOK_PAGE_ID:
-            progress[-1]["error"] = "Facebook non configuré"
+        if network == "all":
+            progress.append({"step": "facebook", "message": "Facebook désactivé par défaut", "done": True, "skipped": True})
 
     result["facebook_published"] = facebook_published
     result["facebook_error"] = facebook_error
@@ -404,8 +408,10 @@ def api_tweet_now():
             try:
                 facebook = facebook_client.FacebookClient()
                 if facebook.configure():
+                    instagram_image = news.get("url", "")
                     instagram_published = facebook.post_to_instagram(
                         message=news["breaking_text"],
+                        image_url=instagram_image,
                     )
                     logger.info("Post Instagram publié : %s", instagram_published)
                     progress[-1]["done"] = True
