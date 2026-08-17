@@ -350,9 +350,7 @@ def api_tweet_now():
             progress[-1]["success"] = False
             progress[-1]["error"] = "Mode dry-run ou Twitter non configuré"
     else:
-        # Twitter désactivé par défaut
-        if network == "all":
-            progress.append({"step": "twitter", "message": "Twitter désactivé par défaut", "done": True, "skipped": True})
+        progress.append({"step": "twitter", "message": "Twitter non sélectionné", "done": True, "skipped": True})
 
     result["published"] = published
     result["free_mode"] = free_mode
