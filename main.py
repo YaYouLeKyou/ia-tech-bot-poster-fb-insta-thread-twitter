@@ -192,11 +192,13 @@ def setup_schedule() -> None:
         logger.info("Breaking news planifiée : %s UTC", time_str)
 
     # Planification alternative : toutes les N heures si configuré
-    # (utilisé si SCHEDULE_TIMES est vide)
-    if not schedule_times:
+    # (utilisé si SCHEDULE_TIMES est vide et intervalle != 0)
+    if not schedule_times and config.NEWS_INTERVAL_HOURS > 0:
         interval = config.NEWS_INTERVAL_HOURS
         schedule.every(interval).hours.do(generate_news_job)
         logger.info("Breaking news planifiée : toutes les %d heures", interval)
+    elif not schedule_times:
+        logger.info("Planification automatique désactivée (intervalle = 0). Publications uniquement via 'Post minute'.")
 
 
 # ─────────────────────────────────────────────────────────────

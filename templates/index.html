@@ -392,6 +392,58 @@
             box-shadow: 0 5px 20px rgba(0, 210, 255, 0.3);
         }
 
+        .network-toggles {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 15px 0;
+        }
+
+        .network-toggles .btn {
+            padding: 12px 20px;
+            font-size: 0.95rem;
+            border-radius: 10px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+            opacity: 0.6;
+            transform: scale(0.98);
+        }
+
+        .network-toggles .btn.active {
+            opacity: 1;
+            transform: scale(1);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .network-toggles .btn.inactive {
+            opacity: 0.5;
+            transform: scale(0.95);
+            filter: grayscale(40%);
+        }
+
+        .network-toggles .btn-twitter.active {
+            border-color: #1da1f2;
+            box-shadow: 0 4px 15px rgba(29, 161, 242, 0.4);
+        }
+
+        .network-toggles .btn-facebook.active {
+            border-color: #4267b2;
+            box-shadow: 0 4px 15px rgba(66, 103, 178, 0.4);
+        }
+
+        .network-toggles .btn-instagram.active {
+            border-color: #e1306c;
+            box-shadow: 0 4px 15px rgba(225, 48, 108, 0.4);
+        }
+
+        .network-toggles .btn-threads.active {
+            border-color: #fff;
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.3);
+        }
+
         .btn-small {
             padding: 6px 12px;
             font-size: 0.8rem;
@@ -858,17 +910,17 @@
                 <div class="schedule-hint">Les publications automatiques auront lieu à ces heures (format UTC).</div>
             </div>
 
-            <!-- Post minute : publication immédiate sur une plateforme spécifique -->
+            <!-- Post minute : publication immédiate sur les plateformes sélectionnées -->
             <div class="controls">
                 <div class="controls-group-title">⚡ Post minute</div>
-                <div class="post-buttons">
-                    <button onclick="postNow('twitter')" class="btn btn-twitter">🐦 Poster sur Twitter</button>
-                    <button onclick="postNow('facebook')" class="btn btn-facebook">📘 Poster sur Facebook</button>
-                    <button onclick="postNow('instagram')" class="btn btn-instagram">📸 Poster sur Instagram</button>
-                    <button onclick="postNow('threads')" class="btn btn-threads">🔗 Poster sur Threads</button>
-                    <button onclick="postNow('all')" class="btn btn-all">📤 Poster sur toutes les plateformes</button>
+                <div class="network-toggles">
+                    <button onclick="toggleNetwork('twitter')" class="btn btn-twitter" id="toggleTwitter">🐦 Twitter</button>
+                    <button onclick="toggleNetwork('facebook')" class="btn btn-facebook" id="toggleFacebook">📘 Facebook</button>
+                    <button onclick="toggleNetwork('instagram')" class="btn btn-instagram" id="toggleInstagram">📸 Instagram</button>
+                    <button onclick="toggleNetwork('threads')" class="btn btn-threads" id="toggleThreads">🔗 Threads</button>
                 </div>
-                <div class="schedule-hint">Génère une nouvelle breaking news et la publie immédiatement sur la plateforme sélectionnée.</div>
+                <button onclick="postNow('all')" class="btn btn-all">📤 Publier maintenant</button>
+                <div class="schedule-hint">Sélectionnez les plateformes, puis cliquez sur "Publier maintenant".</div>
             </div>
 
             <!-- Connexions aux réseaux -->
@@ -878,10 +930,21 @@
                 <select id="interval" class="interval-select" onchange="changeInterval(this.value)">
                     {% for interval in available_intervals %}
                     <option value="{{ interval }}" {% if interval == current_interval %}selected{% endif %}>
-                        Toutes les {{ interval }} heures
+                        {% if interval == 0 %}
+                            🚫 Désactivé (publications uniquement aux heures planifiées)
+                        {% else %}
+                            Toutes les {{ interval }} heures
+                        {% endif %}
                     </option>
                     {% endfor %}
                 </select>
+                <div class="schedule-hint">
+                    {% if current_interval == 0 %}
+                        <strong>Mode désactivé :</strong> Les publications automatiques n'auront lieu qu'aux heures planifiées (ci-dessus).
+                    {% else %}
+                        Les publications automatiques auront lieu toutes les {{ current_interval }} heures en plus des heures planifiées.
+                    {% endif %}
+                </div>
                 <button onclick="connectTwitter()" class="btn btn-twitter" id="twitterBtn">
                     {% if twitter_configured %}
                         ✅ Twitter connecté
@@ -898,7 +961,7 @@
                 </button>
                 <button onclick="diagnosticFacebook()" class="btn btn-secondary" id="facebookDiagBtn">🔍 Diagnostic Facebook</button>
                 <button onclick="clearHistory()" class="btn btn-secondary" id="clearCacheBtn">🗑️ Effacer l'historique</button>
-</div>
+            </div>
         </div>
 
 
@@ -1032,23 +1095,68 @@
     <script>
         const DRY_RUN = document.body.dataset.dryRun === 'true';
         let currentTweetData = null;
+        let activeNetworks = new Set(['facebook', 'threads']);
 
-        // Post minute : publie immédiatement sur le(s) réseau(x) choisi(s)
+        function updateNetworkButtons() {
+            ['twitter', 'facebook', 'instagram', 'threads'].forEach(network => {
+                const btn = document.getElementById('toggle' + network.charAt(0).toUpperCase() + network.slice(1));
+                if (btn) {
+                    if (activeNetworks.has(network)) {
+                        btn.classList.add('active');
+                        btn.classList.remove('inactive');
+                    } else {
+                        btn.classList.remove('active');
+                        btn.classList.add('inactive');
+                    }
+                }
+            });
+        }
+
+        function toggleNetwork(network) {
+            if (activeNetworks.has(network)) {
+                activeNetworks.delete(network);
+            } else {
+                activeNetworks.add(network);
+            }
+            updateNetworkButtons();
+        }
+
+        function getSelectedNetworks() {
+            if (activeNetworks.size === 0) return [];
+            return Array.from(activeNetworks);
+        }
+
+        // Initialisation au chargement de la page
+        document.addEventListener('DOMContentLoaded', function() {
+            updateNetworkButtons();
+        });
+
+        // Post minute : publie immédiatement sur les plateformes sélectionnées
         async function postNow() {
-            const network = getSelectedNetwork();
-            if (!network) {
-                showToast('❌ Sélectionnez au moins un réseau (Twitter ou Facebook)', true);
+            const networks = getSelectedNetworks();
+            if (networks.length === 0) {
+                showToast('❌ Sélectionnez au moins une plateforme', true);
                 return;
             }
 
             const loading = document.getElementById('loading');
-            if (loading) loading.style.display = 'block';
+            if (loading) {
+                loading.style.display = 'block';
+                const networkLabels = {
+                    'twitter': '🐦 Envoi du post Twitter…',
+                    'facebook': '📘 Envoi du post Facebook…',
+                    'instagram': '📸 Envoi du post Instagram…',
+                    'threads': '🔗 Envoi du post Threads…'
+                };
+                const labels = networks.map(n => networkLabels[n] || n).join(', ');
+                loading.textContent = labels;
+            }
 
             try {
                 const response = await fetch('/api/tweet-now', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ network: network })
+                    body: JSON.stringify({ network: networks.join(',') })
                 });
                 const data = await response.json();
 
@@ -1056,13 +1164,25 @@
                     throw new Error(data.error || 'Erreur lors de la publication');
                 }
 
-                // Afficher la simulation visuelle
+                if (loading && data.progress) {
+                    const lastStep = data.progress[data.progress.length - 1];
+                    if (lastStep && lastStep.message) {
+                        loading.textContent = lastStep.message;
+                    }
+                    setTimeout(() => {
+                        if (loading) loading.style.display = 'none';
+                    }, 800);
+                } else if (loading) {
+                    setTimeout(() => {
+                        if (loading) loading.style.display = 'none';
+                    }, 800);
+                }
+
                 currentTweetData = data;
                 showTweetPreview(data.tweet_preview);
             } catch (error) {
-                showToast('❌ ' + error.message, true);
-            } finally {
                 if (loading) loading.style.display = 'none';
+                showToast('❌ ' + error.message, true);
             }
         }
 
@@ -1112,7 +1232,8 @@
                     throw new Error(data.error || 'Erreur lors du changement de fréquence');
                 }
 
-                showToast('✅ Fréquence mise à jour : toutes les ' + interval + ' heures');
+                const label = data.label || ('Toutes les ' + interval + ' heures');
+                showToast('✅ Fréquence mise à jour : ' + label);
             } catch (error) {
                 showToast('❌ ' + error.message, true);
             }

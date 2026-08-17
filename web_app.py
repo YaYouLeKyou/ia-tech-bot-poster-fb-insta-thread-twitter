@@ -26,7 +26,8 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 # Fréquences disponibles (en heures)
-AVAILABLE_INTERVALS = [2, 4, 8, 12, 24, 48]
+# 0 = désactivé (publication uniquement aux heures planifiées)
+AVAILABLE_INTERVALS = [0, 2, 4, 6, 8, 12, 24, 48]
 
 
 def _scheduled_publish() -> None:
@@ -218,7 +219,7 @@ def api_clear_history():
 
 @app.route("/api/interval", methods=["POST"])
 def api_set_interval():
-    """API : change la fréquence de mise à jour (en heures)."""
+    """API : change la fréquence de mise à jour (en heures). 0 = désactivé."""
     data = request.get_json(silent=True) or {}
     try:
         interval = int(data.get("interval", 2))
@@ -229,8 +230,8 @@ def api_set_interval():
         return jsonify({"error": f"Intervalle non autorisée. Choisissez parmi : {AVAILABLE_INTERVALS}"}), 400
 
     config.NEWS_INTERVAL_HOURS = interval
-    logger.info("Fréquence de mise à jour changée : toutes les %d heures", interval)
-    return jsonify({"success": True, "interval": interval})
+    logger.info("Fréquence de mise à jour changée : %s", "désactivée" if interval == 0 else f"toutes les {interval} heures")
+    return jsonify({"success": True, "interval": interval, "label": "Désactivé" if interval == 0 else f"Toutes les {interval} heures"})
 
 
 @app.route("/api/schedule", methods=["POST"])
@@ -264,27 +265,30 @@ def api_set_schedule():
 @app.route("/api/tweet-now", methods=["POST"])
 def api_tweet_now():
     """
-    API : génère une nouvelle breaking news et la publie sur Facebook
-    (prioritaire). Twitter et Instagram sont désactivés par défaut
-    (Twitter sans accès API payante, Instagram non fonctionnel).
+    API : génère une nouvelle breaking news et la publie sur les
+    plateformes sélectionnées : twitter, facebook, instagram, threads.
     Retourne la simulation visuelle et le statut de publication.
     """
     data = request.get_json(silent=True) or {}
-    # Par défaut, ne publie que sur Facebook
-    network = data.get("network", "facebook")
-    if network not in ("twitter", "facebook", "instagram", "threads", "both", "all"):
-        network = "facebook"
+    raw_network = data.get("network", "facebook")
+    if isinstance(raw_network, str):
+        networks = [n.strip() for n in raw_network.split(",") if n.strip()]
+    else:
+        networks = [str(raw_network)]
 
-    # Si "all" ou "both" est demandé, publier sur les plateformes sélectionnées
-    post_twitter = network in ("twitter", "both", "all")
-    post_facebook = network in ("facebook", "both", "all")
-    post_instagram = network in ("instagram", "both", "all")
-    post_threads = network in ("threads", "both", "all")
+    valid_networks = [n for n in networks if n in ("twitter", "facebook", "instagram", "threads")]
+    if not valid_networks:
+        valid_networks = ["facebook"]
+
+    post_twitter = "twitter" in valid_networks
+    post_facebook = "facebook" in valid_networks
+    post_instagram = "instagram" in valid_networks
+    post_threads = "threads" in valid_networks
 
     progress = []
     result = {
         "success": True,
-        "network": network,
+        "network": ",".join(valid_networks),
         "progress": progress,
     }
 
@@ -393,8 +397,7 @@ def api_tweet_now():
             elif not config.FB_PAGE_ACCESS_TOKEN or not config.FACEBOOK_PAGE_ID:
                 progress[-1]["error"] = "Facebook non configuré"
     else:
-        if network == "all":
-            progress.append({"step": "facebook", "message": "Facebook désactivé par défaut", "done": True, "skipped": True})
+        progress.append({"step": "facebook", "message": "Facebook non sélectionné", "done": True, "skipped": True})
 
     result["facebook_published"] = facebook_published
     result["facebook_error"] = facebook_error
@@ -444,9 +447,7 @@ def api_tweet_now():
             elif not config.INSTAGRAM_ACCOUNT_ID:
                 progress[-1]["error"] = "Instagram non configuré"
     else:
-        # Instagram désactivé par défaut
-        if network == "all":
-            progress.append({"step": "instagram", "message": "Instagram désactivé par défaut", "done": True, "skipped": True})
+        progress.append({"step": "instagram", "message": "Instagram non sélectionné", "done": True, "skipped": True})
 
     result["instagram_published"] = instagram_published
     result["instagram_error"] = instagram_error
@@ -494,19 +495,19 @@ def api_tweet_now():
             elif not config.THREADS_USER_ID or not config.THREADS_ACCESS_TOKEN:
                 progress[-1]["error"] = "Threads non configuré"
     else:
-        # Threads désactivé par défaut
-        if network == "all":
-            progress.append({"step": "threads", "message": "Threads désactivé par défaut", "done": True, "skipped": True})
+        progress.append({"step": "threads", "message": "Threads non sélectionné", "done": True, "skipped": True})
 
     result["threads_published"] = threads_published
     result["threads_error"] = threads_error
     result["dry_run"] = config.DRY_RUN
 
     # Message final de progression
-    if facebook_published or threads_published:
-        progress.append({"step": "done", "message": "Publication terminée avec succès !", "done": True, "final": True})
-    elif published or instagram_published:
-        progress.append({"step": "done", "message": "Publication terminée (partielle)", "done": True, "final": True})
+    if post_facebook or post_threads or post_twitter or post_instagram:
+        has_success = (post_facebook and facebook_published) or (post_threads and threads_published) or (post_twitter and published) or (post_instagram and instagram_published)
+        if has_success:
+            progress.append({"step": "done", "message": "Publication terminée avec succès !", "done": True, "final": True})
+        else:
+            progress.append({"step": "done", "message": "Publication terminée (partielle)", "done": True, "final": True})
     else:
         progress.append({"step": "done", "message": "Publication échouée", "done": True, "final": True, "error": True})
 
