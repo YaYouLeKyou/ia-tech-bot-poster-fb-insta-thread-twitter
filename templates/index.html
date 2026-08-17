@@ -125,6 +125,12 @@
             color: #ffad1f;
         }
 
+        .status-badge.threads-off {
+            background: rgba(255, 173, 31, 0.15);
+            border: 1px solid rgba(255, 173, 31, 0.4);
+            color: #ffad1f;
+        }
+
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.7; }
@@ -356,6 +362,34 @@
 
         .btn-facebook:hover {
             box-shadow: 0 5px 20px rgba(66, 103, 178, 0.3);
+        }
+
+        .btn-instagram {
+            background: linear-gradient(90deg, #e1306c, #c13584);
+            border: 1px solid rgba(225, 48, 108, 0.5);
+        }
+
+        .btn-instagram:hover {
+            box-shadow: 0 5px 20px rgba(225, 48, 108, 0.3);
+        }
+
+        .btn-threads {
+            background: linear-gradient(90deg, #000, #333);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: #fff;
+        }
+
+        .btn-threads:hover {
+            box-shadow: 0 5px 20px rgba(255, 255, 255, 0.25);
+        }
+
+        .btn-all {
+            background: linear-gradient(90deg, #00d2ff, #0099cc);
+            border: 1px solid rgba(0, 210, 255, 0.5);
+        }
+
+        .btn-all:hover {
+            box-shadow: 0 5px 20px rgba(0, 210, 255, 0.3);
         }
 
         .btn-small {
@@ -805,6 +839,7 @@
                 <span class="status-badge facebook-off">❌ Facebook non configuré</span>
                 {% endif %}
                 <span class="status-badge instagram-off">⏸️ Instagram désactivé</span>
+                <span class="status-badge threads-off">⏸️ Threads désactivé</span>
                 <span class="status-badge schedule">🕐 Publication : {{ schedule_times|join(' & ') }} UTC</span>
             </div>
         </header>
@@ -823,24 +858,17 @@
                 <div class="schedule-hint">Les publications automatiques auront lieu à ces heures (format UTC).</div>
             </div>
 
-            <!-- Post minute : publication immédiate sur le(s) réseau(x) choisi(s) -->
+            <!-- Post minute : publication immédiate sur une plateforme spécifique -->
             <div class="controls">
                 <div class="controls-group-title">⚡ Post minute</div>
-                <label>Envoyer sur :</label>
-                <label class="network-check twitter-check" id="netTwitterLabel">
-                    <input type="checkbox" id="netTwitter" onchange="updateNetworkCheck(this, 'netTwitterLabel')">
-                    🐦 Twitter
-                </label>
-                <label class="network-check facebook-check" id="netFacebookLabel">
-                    <input type="checkbox" id="netFacebook" checked onchange="updateNetworkCheck(this, 'netFacebookLabel')">
-                    📘 Facebook
-                </label>
-                <label class="network-check instagram-check" id="netInstagramLabel">
-                    <input type="checkbox" id="netInstagram" onchange="updateNetworkCheck(this, 'netInstagramLabel')">
-                    📸 Instagram
-                </label>
-                <button onclick="postNow()" class="btn btn-tweet">⚡ Post Now</button>
-                <div class="schedule-hint">Génère une nouvelle breaking news et la publie immédiatement sur le(s) réseau(x) sélectionné(s).</div>
+                <div class="post-buttons">
+                    <button onclick="postNow('twitter')" class="btn btn-twitter">🐦 Poster sur Twitter</button>
+                    <button onclick="postNow('facebook')" class="btn btn-facebook">📘 Poster sur Facebook</button>
+                    <button onclick="postNow('instagram')" class="btn btn-instagram">📸 Poster sur Instagram</button>
+                    <button onclick="postNow('threads')" class="btn btn-threads">🔗 Poster sur Threads</button>
+                    <button onclick="postNow('all')" class="btn btn-all">📤 Poster sur toutes les plateformes</button>
+                </div>
+                <div class="schedule-hint">Génère une nouvelle breaking news et la publie immédiatement sur la plateforme sélectionnée.</div>
             </div>
 
             <!-- Connexions aux réseaux -->
@@ -1127,27 +1155,8 @@
             }
         }
 
-        // Récupère le réseau sélectionné (twitter, facebook, instagram)
-        // Par défaut, seulement Facebook est coché
-        function getSelectedNetwork() {
-            const twitter = document.getElementById('netTwitter').checked;
-            const facebook = document.getElementById('netFacebook').checked;
-            const instagram = document.getElementById('netInstagram').checked;
-
-            if (twitter && !facebook && !instagram) return 'twitter';
-            if (!twitter && facebook && !instagram) return 'facebook';
-            if (!twitter && !facebook && instagram) return 'instagram';
-            if (twitter && facebook && !instagram) return 'both';
-            if (twitter && !facebook && instagram) return 'both';
-            if (!twitter && facebook && instagram) return 'both';
-            if (twitter && facebook && instagram) return 'all';
-            // Par défaut, si rien n'est coché, retourne Facebook
-            return 'facebook';
-        }
-
-        // Post minute : publie immédiatement sur le réseau choisi
-        async function postNow() {
-            const network = getSelectedNetwork();
+        // Post minute : publie immédiatement sur la plateforme choisie
+        async function postNow(network) {
             const loading = document.getElementById('loading');
             if (loading) {
                 loading.style.display = 'block';
@@ -1155,8 +1164,8 @@
                     'twitter': '🐦 Envoi du post Twitter…',
                     'facebook': '📘 Envoi du post Facebook…',
                     'instagram': '📸 Envoi du post Instagram…',
-                    'both': '📤 Envoi du post sur les réseaux sélectionnés…',
-                    'all': '📤 Envoi du post sur tous les réseaux…'
+                    'threads': '🔗 Envoi du post Threads…',
+                    'all': '📤 Envoi du post sur toutes les plateformes…'
                 };
                 loading.textContent = networkLabels[network] || '⏳ Publication en cours…';
             }
@@ -1551,10 +1560,20 @@
                         parts.push('📸 Instagram non envoyé');
                     }
                 }
+                if (network === 'threads' || network === 'both' || network === 'all') {
+                    if (data.threads_published) {
+                        parts.push('🔗 Threads envoyé');
+                    } else if (data.threads_error) {
+                        parts.push('🔗 Threads échec : ' + data.threads_error);
+                    } else {
+                        parts.push('🔗 Threads non envoyé');
+                    }
+                }
 
                 const anySuccess = (network !== 'twitter' || data.published) &&
                                    (network !== 'facebook' || data.facebook_published) &&
-                                   (network !== 'instagram' || data.instagram_published);
+                                   (network !== 'instagram' || data.instagram_published) &&
+                                   (network !== 'threads' || data.threads_published);
 
                 if (anySuccess) {
                     status.textContent = '✅ Post envoyé : ' + parts.join(' · ');

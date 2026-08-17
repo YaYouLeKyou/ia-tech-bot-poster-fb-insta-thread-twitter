@@ -272,13 +272,14 @@ def api_tweet_now():
     data = request.get_json(silent=True) or {}
     # Par défaut, ne publie que sur Facebook
     network = data.get("network", "facebook")
-    if network not in ("twitter", "facebook", "instagram", "both", "all"):
+    if network not in ("twitter", "facebook", "instagram", "threads", "both", "all"):
         network = "facebook"
 
     # Si "all" ou "both" est demandé, publier sur les plateformes sélectionnées
     post_twitter = network in ("twitter", "both", "all")
     post_facebook = network in ("facebook", "both", "all")
-    post_instagram = network in ("instagram", "all")
+    post_instagram = network in ("instagram", "both", "all")
+    post_threads = network in ("threads", "both", "all")
 
     progress = []
     result = {
@@ -443,10 +444,60 @@ def api_tweet_now():
 
     result["instagram_published"] = instagram_published
     result["instagram_error"] = instagram_error
+
+    # 6. Publication sur Threads (seulement si explicitement demandé)
+    threads_published = False
+    threads_error = None
+    if post_threads:
+        progress.append({"step": "threads", "message": "Envoi du post Threads…", "done": False})
+        if not config.DRY_RUN and config.THREADS_ACCESS_TOKEN and config.THREADS_USER_ID:
+            try:
+                facebook = facebook_client.FacebookClient()
+                if facebook.configure():
+                    threads_published = facebook.post_to_threads(
+                        message=news["breaking_text"],
+                    )
+                    logger.info("Post Threads publié : %s", threads_published)
+                    progress[-1]["done"] = True
+                    progress[-1]["success"] = threads_published
+                    if not threads_published:
+                        threads_error = "Échec de la publication Threads — voir les logs serveur"
+                        progress[-1]["error"] = threads_error
+                else:
+                    threads_error = (
+                        "Token Threads expiré ou invalide. "
+                        "Générez un nouveau Threads Access Token sur "
+                        "https://developers.facebook.com/tools/access-token/ "
+                        "avec les permissions threads_basic et threads_content_publish, "
+                        "puis redémarrez l'application."
+                    )
+                    progress[-1]["done"] = True
+                    progress[-1]["success"] = False
+                    progress[-1]["error"] = threads_error
+            except Exception as exc:  # noqa: BLE001
+                logger.error("Erreur lors de la publication Threads : %s", exc)
+                threads_error = str(exc)
+                progress[-1]["done"] = True
+                progress[-1]["success"] = False
+                progress[-1]["error"] = threads_error
+        else:
+            progress[-1]["done"] = True
+            progress[-1]["success"] = False
+            if config.DRY_RUN:
+                progress[-1]["error"] = "Mode dry-run activé"
+            elif not config.THREADS_USER_ID or not config.THREADS_ACCESS_TOKEN:
+                progress[-1]["error"] = "Threads non configuré"
+    else:
+        # Threads désactivé par défaut
+        if network == "all":
+            progress.append({"step": "threads", "message": "Threads désactivé par défaut", "done": True, "skipped": True})
+
+    result["threads_published"] = threads_published
+    result["threads_error"] = threads_error
     result["dry_run"] = config.DRY_RUN
 
     # Message final de progression
-    if facebook_published:
+    if facebook_published or threads_published:
         progress.append({"step": "done", "message": "Publication terminée avec succès !", "done": True, "final": True})
     elif published or instagram_published:
         progress.append({"step": "done", "message": "Publication terminée (partielle)", "done": True, "final": True})
