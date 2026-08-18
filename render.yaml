@@ -1,20 +1,25 @@
 # Configuration Render — Agent Twitter Veille IA & Tech
-# Type : Background Worker (exécution continue 24/7)
+# Type : Web Service (serveur Flask + worker intégré)
+#
+# Important : le type "web" (au lieu de "worker") est nécessaire pour que
+# l'endpoint /ping soit accessible publiquement. Cela permet à un cron
+# externe gratuit (cron-job.org, UptimeRobot) de réveiller le service
+# sur le plan gratuit Render et de garantir 4 posts/jour.
 #
 # Déploiement :
 #   1. Poussez ce dépôt sur GitHub
 #   2. Sur Render : New → Blueprint → sélectionnez le dépôt
-#   3. Cette configuration crée automatiquement le worker
+#   3. Cette configuration crée automatiquement le service web
 #   4. Ajoutez les variables d'environnement ci-dessous en secrets
 
 services:
-  - type: worker
+  - type: web
     name: twitter-agency-news-bot
     runtime: python
     plan: free  # ou starter si besoin de plus de ressources
     buildCommand: pip install -r requirements.txt
     startCommand: python main.py
-    healthCheckPath: /
+    healthCheckPath: /ping
     envVars:
       # ── Clés API Twitter (X) V2 ────────────────────────────
       - key: TWITTER_API_KEY
