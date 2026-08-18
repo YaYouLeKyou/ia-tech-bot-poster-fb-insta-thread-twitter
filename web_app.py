@@ -82,6 +82,27 @@ def index():
     )
 
 
+@app.route("/ping")
+def ping():
+    """
+    Endpoint de réveil — utilisé par un cron externe (cron-job.org, UptimeRobot)
+    pour réveiller le worker Render (plan gratuit) et exécuter les posts planifiés.
+
+    Sur le plan gratuit de Render, le worker s'endort après 15 min d'inactivité.
+    Ce ping réveille le serveur Flask et appelle schedule.run_pending()
+    pour vérifier si une heure de publication (08:00, 12:00, 17:00, 20:00 UTC)
+    est due. Retourne "pong" pour confirmer que le réveil a fonctionné.
+    """
+    try:
+        import schedule as schedule_module
+        schedule_module.run_pending()
+        logger.info("Ping reçu — posts planifiés vérifiés")
+        return "pong", 200
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Erreur lors du ping : %s", exc)
+        return f"erreur: {exc}", 500
+
+
 @app.route("/api/latest")
 def api_latest():
     """API JSON : dernière breaking news."""

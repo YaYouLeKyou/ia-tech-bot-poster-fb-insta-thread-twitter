@@ -168,6 +168,41 @@ Le dashboard permet de :
 - Activer/désactiver le mode intervalle
 - Publier immédiatement sur les plateformes sélectionnées
 
+## ⏰ Compatibilité plan gratuit Render — Garantie 4 posts/jour
+
+Le plan **gratuit** de Render met le worker en veille après 15 minutes d'inactivité.
+Pour garantir vos **4 publications automatiques par jour**, le projet inclut un
+endpoint `/ping` qui réveille le worker et exécute les posts planifiés.
+
+### Fonctionnement
+
+| Élément | Détail |
+|---|---|
+| **Endpoint `/ping`** | Route Flask intégrée dans `web_app.py` qui réveille le worker et appelle `schedule.run_pending()` |
+| **Cron externe gratuit** | Un service comme cron-job.org ou UptimeRobot ping `https://VOTRE-APP.onrender.com/ping` toutes les 5-10 minutes |
+| **Résultat** | Les 4 posts (08:00, 12:00, 17:00, 20:00 UTC) sont publiés dans les 10 minutes max après l'heure cible |
+
+### Configuration avec cron-job.org (gratuit)
+
+1. Créez un compte gratuit sur [cron-job.org](https://cron-job.org)
+2. Cliquez sur **+ Create cronjob**
+3. Configurez :
+   - **URL** : `https://VOTRE-APP.onrender.com/ping`
+   - **Schedule** : Every 5 minutes (ou 10 minutes maximum)
+   - **Enabled** : ✅
+4. Sauvegardez — c'est tout !
+
+### Alternative : UptimeRobot
+
+1. Créez un compte gratuit sur [uptimerobot.com](https://uptimerobot.com)
+2. **Add New Monitor** → HTTP(s) Monitor
+3. **URL** : `https://VOTRE-APP.onrender.com/ping`
+4. **Interval** : 5 minutes
+5. Sauvegardez
+
+> 💡 **Remarque** : si le worker est déjà réveillé (plan Starter), l'endpoint `/ping`
+> n'a pas d'effet visible — il vérifie simplement si un post est dû et continue.
+
 ## 🔑 Renouvellement automatique des tokens API
 
 Les tokens Meta (Facebook, Instagram, Threads) expirent après **60 jours**. Ce projet
