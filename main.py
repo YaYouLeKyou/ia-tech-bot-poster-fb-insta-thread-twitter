@@ -129,14 +129,13 @@ def publish_news_instagram(news: dict) -> bool:
     """
     Publie la breaking news générée sur Instagram (ou simule en dry-run).
 
-    :param news: dict avec breaking_text, title, url
+    :param news: dict avec breaking_text, title, url, image
     :return: True si publié (ou simulé), False sinon
     """
     if not news or not news.get("breaking_text"):
         logger.warning("Aucun texte de post à publier sur Instagram")
         return False
 
-    # Si Instagram n'est pas configuré, on log simplement
     if not config.FB_PAGE_ACCESS_TOKEN or not config.INSTAGRAM_ACCOUNT_ID:
         logger.warning(
             "Instagram non configuré — post non publié. "
@@ -150,7 +149,8 @@ def publish_news_instagram(news: dict) -> bool:
             logger.error("Échec de la configuration Facebook/Instagram")
             return False
 
-        published = facebook.post_to_instagram(message=news["breaking_text"])
+        image_url = news.get("image", "") or ""
+        published = facebook.post_to_instagram(message=news["breaking_text"], image_url=image_url)
         if published:
             logger.info("✅ Post Instagram publié : %s", news["title"][:60])
         else:
@@ -162,41 +162,141 @@ def publish_news_instagram(news: dict) -> bool:
         return False
 
 
+def publish_news_threads(news: dict) -> bool:
+    """
+    Publie la breaking news générée sur Threads (ou simule en dry-run).
+
+    :param news: dict avec breaking_text, title, url, image
+    :return: True si publié (ou simulé), False sinon
+    """
+    if not news or not news.get("breaking_text"):
+        logger.warning("Aucun texte de post à publier sur Threads")
+        return False
+
+    if not config.THREADS_ACCESS_TOKEN or not config.THREADS_USER_ID:
+        logger.warning(
+            "Threads non configuré — post non publié. "
+            "Renseignez THREADS_ACCESS_TOKEN et THREADS_USER_ID dans .env"
+        )
+        return False
+
+    try:
+        facebook = facebook_client.FacebookClient()
+        if not facebook.configure():
+            logger.error("Échec de la configuration Facebook/Threads")
+            return False
+
+        image_url = news.get("image", "") or ""
+        published = facebook.post_to_threads(message=news["breaking_text"], image_url=image_url)
+        if published:
+            logger.info("✅ Post Threads publié : %s", news["title"][:60])
+        else:
+            logger.error("❌ Échec de la publication du post Threads")
+        return published
+
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Erreur lors de la publication Threads : %s", exc)
+        return False
+
+
 # ─────────────────────────────────────────────────────────────
 # Génération + publication d'une breaking news
 # ─────────────────────────────────────────────────────────────
 def generate_news_job() -> None:
-    """Génère une nouvelle breaking news et la publie sur Twitter + Facebook + Instagram."""
+    """Génère une nouvelle breaking news et la publie sur Twitter + Facebook + Instagram + Threads."""
     logger.info("=== Génération planifiée d'une breaking news ===")
     news = news_service.generate_breaking_news()
     if news:
         logger.info("✅ Breaking news générée : %s", news["title"][:60])
-        # Publication sur Twitter (respecte DRY_RUN via twitter_client)
         publish_news_tweet(news)
-        # Publication sur Facebook (respecte DRY_RUN via facebook_client)
         publish_news_facebook(news)
-        # Publication sur Instagram (respecte DRY_RUN via facebook_client)
         publish_news_instagram(news)
+        publish_news_threads(news)
     else:
         logger.warning("⚠️  Échec de la génération de la breaking news")
 
 
 # ─────────────────────────────────────────────────────────────
-# Planification avec `schedule` (2 fois par jour)
+# Planification avec `schedule`
 # ─────────────────────────────────────────────────────────────
+_schedule_lock = threading.Lock()
+
+
+def _clear_schedule() -> None:
+    """Supprime tous les jobs planifiés (thread-safe)."""
+    with _schedule_lock:
+        schedule.clear()
+
+
 def setup_schedule() -> None:
     """Planifie la génération des breaking news aux heures configurées."""
-    schedule_times = config.SCHEDULE_TIMES
-    for time_str in schedule_times:
-        schedule.every().day.at(time_str).do(generate_news_job)
-        logger.info("Breaking news planifiée : %s UTC", time_str)
-
-    # Planification alternative : toutes les N heures si configuré
-    # (utilisé si SCHEDULE_TIMES est vide)
-    if not schedule_times:
+    with _schedule_lock:
+        schedule_times = config.SCHEDULE_TIMES
         interval = config.NEWS_INTERVAL_HOURS
-        schedule.every(interval).hours.do(generate_news_job)
-        logger.info("Breaking news planifiée : toutes les %d heures", interval)
+
+        if interval > 0 and interval is not None:
+            schedule.every(interval).hours.do(generate_news_job)
+            logger.info("Breaking news planifiée : toutes les %d heures", interval)
+        else:
+            for time_str in schedule_times:
+                schedule.every().day.at(time_str).do(generate_news_job)
+                logger.info("Breaking news planifiée : %s UTC", time_str)
+
+            if not schedule_times:
+                schedule.every(interval).hours.do(generate_news_job)
+                logger.info("Breaking news planifiée : toutes les %d heures", interval)
+
+
+def reschedule_global() -> None:
+    """
+    Re-planifie l'ensemble des publications à partir de la config courante.
+    Utilisé par l'interface web quand l'utilisateur change les heures
+    ou la fréquence depuis le dashboard.
+    """
+    _clear_schedule()
+    setup_schedule()
+    logger.info("Planification globale mise à jour")
+
+
+def _catch_up_missed_posts(schedule_times: list) -> bool:
+    """
+    Vérifie si une publication planifiée a été manquée au démarrage
+    (ex: redémarrage du worker après l'heure planifiée).
+
+    :return: True si un post de rattrapage a été exécuté, False sinon
+    """
+    if not schedule_times or config.NEWS_INTERVAL_HOURS > 0:
+        return False
+
+    now = datetime.now(timezone.utc)
+    current_time = now.strftime("%H:%M")
+
+    # Vérifie si on est passé après au moins une heure planifiée
+    passed_schedule = any(current_time >= t for t in schedule_times)
+    if not passed_schedule:
+        return False
+
+    # Vérifie si une publication a déjà été faite aujourd'hui
+    latest = database.get_latest_breaking_news()
+    if latest and latest.get("published_at"):
+        try:
+            published_dt = datetime.fromisoformat(latest["published_at"])
+            if published_dt.date() == now.date():
+                logger.info(
+                    "Un post a déjà été publié aujourd'hui (%s) — pas de rattrapage nécessaire",
+                    published_dt.strftime("%H:%M"),
+                )
+                return False
+        except (ValueError, TypeError):
+            pass
+
+    logger.info("Publication planifiée manquée détectée — exécution d'un post de rattrapage")
+    try:
+        generate_news_job()
+        return True
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Erreur lors du post de rattrapage : %s", exc)
+        return False
 
 
 # ─────────────────────────────────────────────────────────────
@@ -247,7 +347,10 @@ def main() -> None:
     logger.info("Base de données : %s (articles traités : %d)", config.DB_PATH, stats.get("count", 0))
 
     # 2. Planification des breaking news
-    setup_schedule()
+    reschedule_global()
+
+    # 2bis. Rattrapage des posts manqués au démarrage
+    _catch_up_missed_posts(config.SCHEDULE_TIMES)
 
     # 3. Lancement du serveur web IMMÉDIATEMENT (avant la génération initiale)
     start_web_server()

@@ -12,7 +12,6 @@ import logging
 import re
 from datetime import datetime, timezone
 
-import schedule
 from flask import Flask, jsonify, render_template, request
 
 import config
@@ -28,61 +27,6 @@ app = Flask(__name__)
 # Fréquences disponibles (en heures)
 # 0 = désactivé (publication uniquement aux heures planifiées)
 AVAILABLE_INTERVALS = [0, 2, 4, 6, 8, 12, 24, 48]
-
-
-def _scheduled_publish() -> None:
-    """
-    Tâche planifiée : génère une breaking news et la publie sur
-    Twitter + Facebook (respecte DRY_RUN via les clients).
-    """
-    logger.info("=== Publication planifiée d'une breaking news ===")
-    news = news_service.generate_breaking_news()
-    if not news:
-        logger.warning("⚠️  Échec de la génération de la breaking news planifiée")
-        return
-
-    logger.info("✅ Breaking news générée : %s", news["title"][:60])
-
-    # Publication Twitter
-    if config.TWITTER_API_KEY and config.TWITTER_API_SECRET:
-        try:
-            twitter = twitter_client.TwitterClient()
-            if twitter.configure():
-                twitter.post_tweet(news["breaking_text"])
-        except Exception as exc:  # noqa: BLE001
-            logger.error("Erreur publication Twitter (planifiée) : %s", exc)
-    else:
-        logger.warning("Twitter non configuré — tweet planifié non publié")
-
-    # Publication Facebook
-    if config.FB_PAGE_ACCESS_TOKEN and config.FACEBOOK_PAGE_ID:
-        try:
-            facebook = facebook_client.FacebookClient()
-            if facebook.configure():
-                facebook.post_to_page(message=news["breaking_text"], link=news.get("url", ""))
-        except Exception as exc:  # noqa: BLE001
-            logger.error("Erreur publication Facebook (planifiée) : %s", exc)
-    else:
-        logger.warning("Facebook non configuré — post planifié non publié")
-
-    # Publication Instagram
-    if config.FB_PAGE_ACCESS_TOKEN and config.INSTAGRAM_ACCOUNT_ID:
-        try:
-            facebook = facebook_client.FacebookClient()
-            if facebook.configure():
-                facebook.post_to_instagram(message=news["breaking_text"])
-        except Exception as exc:  # noqa: BLE001
-            logger.error("Erreur publication Instagram (planifiée) : %s", exc)
-    else:
-        logger.warning("Instagram non configuré — post planifié non publié")
-
-
-def _reschedule() -> None:
-    """Re-planifie les publications selon config.SCHEDULE_TIMES."""
-    schedule.clear()
-    for time_str in config.SCHEDULE_TIMES:
-        schedule.every().day.at(time_str).do(_scheduled_publish)
-        logger.info("Publication planifiée : %s UTC", time_str)
 
 
 def _format_date(iso_str: str) -> str:
@@ -235,6 +179,10 @@ def api_set_interval():
 
     config.NEWS_INTERVAL_HOURS = interval
     logger.info("Fréquence de mise à jour changée : %s", "désactivée" if interval == 0 else f"toutes les {interval} heures")
+
+    import main as main_module
+    main_module.reschedule_global()
+
     return jsonify({"success": True, "interval": interval, "label": "Désactivé" if interval == 0 else f"Toutes les {interval} heures"})
 
 
@@ -261,7 +209,10 @@ def api_set_schedule():
 
     # Mise à jour de la configuration et re-planification
     config.SCHEDULE_TIMES = valid_times
-    _reschedule()
+
+    import main as main_module
+    main_module.reschedule_global()
+
     logger.info("Heures de publication mises à jour : %s UTC", valid_times)
     return jsonify({"success": True, "times": valid_times})
 
