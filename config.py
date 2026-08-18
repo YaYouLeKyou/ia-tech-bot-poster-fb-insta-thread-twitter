@@ -49,6 +49,17 @@ FB_PAGE_ACCESS_TOKEN = os.getenv("FB_PAGE_ACCESS_TOKEN", os.getenv("META_ACCESS_
 FACEBOOK_PAGE_ID = os.getenv("FACEBOOK_PAGE_ID", "")
 INSTAGRAM_ACCOUNT_ID = os.getenv("INSTAGRAM_ACCOUNT_ID", "")
 
+# ── Renouvellement automatique des tokens ────────────────────
+# Identifiants de l'application Facebook (nécessaires pour fb_exchange_token)
+# https://developers.facebook.com/apps/ → votre app → Paramètres → Identifiants
+FB_APP_ID = os.getenv("FB_APP_ID", "")
+FB_APP_SECRET = os.getenv("FB_APP_SECRET", "")
+
+# Nombre de jours entre deux renouvellements automatiques des tokens.
+# Les tokens Meta/Threads durent 60 jours — un renouvellement tous les
+# 30 jours garantit une marge de sécurité confortable.
+TOKEN_RENEWAL_DAYS = int(os.getenv("TOKEN_RENEWAL_DAYS", "30"))
+
 # ─────────────────────────────────────────────────────────────
 # API Threads (Meta)
 # ─────────────────────────────────────────────────────────────
@@ -141,6 +152,23 @@ TEST_ON_STARTUP = os.getenv("TEST_ON_STARTUP", "false").strip().lower() == "true
 # true  = affiche le tweet dans la console, ne publie PAS sur Twitter
 # false = publie réellement sur Twitter (comportement normal)
 DRY_RUN = os.getenv("DRY_RUN", "false").strip().lower() in ("true", "1", "yes")
+
+# ─────────────────────────────────────────────────────────────
+# Notification email — alerte en cas de token expiré
+# ─────────────────────────────────────────────────────────────
+# Adresse email qui reçoit les alertes de token expiré
+ALERT_EMAIL = os.getenv("ALERT_EMAIL", "yanes75@hotmail.fr")
+
+# Activation de l'envoi d'emails (true/false)
+SMTP_ENABLED = os.getenv("SMTP_ENABLED", "false").strip().lower() in ("true", "1", "yes")
+
+# Configuration SMTP
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_TLS = os.getenv("SMTP_TLS", "true").strip().lower() in ("true", "1", "yes")
+SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SMTP_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", SMTP_USERNAME)
 
 # ─────────────────────────────────────────────────────────────
 # Prompt système pour la génération du tweet

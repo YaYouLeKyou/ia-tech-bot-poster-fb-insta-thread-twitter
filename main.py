@@ -23,8 +23,10 @@ import schedule
 
 import config
 import database
+import email_notifier
 import facebook_client
 import news_service
+import token_renewal
 import twitter_client
 import web_app
 from web_app import _build_long_post_message
@@ -107,6 +109,12 @@ def publish_news_facebook(news: dict) -> bool:
         facebook = facebook_client.FacebookClient()
         if not facebook.configure():
             logger.error("Échec de la configuration Facebook")
+            # Envoi d'une alerte email si le token est expiré/invalide
+            email_notifier.send_token_expired_alert(
+                platform="Facebook",
+                token_name="FB_PAGE_ACCESS_TOKEN",
+                error_detail="Token Facebook invalide ou expiré (échec de configuration)",
+            )
             return False
 
         message = _build_long_post_message(news)
@@ -116,6 +124,13 @@ def publish_news_facebook(news: dict) -> bool:
             logger.info("✅ Post Facebook publié : %s", news["title"][:60])
         else:
             logger.error("❌ Échec de la publication du post Facebook")
+            # Vérifie si l'échec est dû à un token expiré
+            if facebook.is_token_expired_error():
+                email_notifier.send_token_expired_alert(
+                    platform="Facebook",
+                    token_name="FB_PAGE_ACCESS_TOKEN",
+                    error_detail=facebook.last_error_message,
+                )
         return published
 
     except Exception as exc:  # noqa: BLE001
@@ -148,6 +163,12 @@ def publish_news_instagram(news: dict) -> bool:
         facebook = facebook_client.FacebookClient()
         if not facebook.configure():
             logger.error("Échec de la configuration Facebook/Instagram")
+            # Envoi d'une alerte email si le token est expiré/invalide
+            email_notifier.send_token_expired_alert(
+                platform="Instagram",
+                token_name="FB_PAGE_ACCESS_TOKEN",
+                error_detail="Token Facebook/Instagram invalide ou expiré (échec de configuration)",
+            )
             return False
 
         image_url = news.get("image", "") or ""
@@ -156,6 +177,13 @@ def publish_news_instagram(news: dict) -> bool:
             logger.info("✅ Post Instagram publié : %s", news["title"][:60])
         else:
             logger.error("❌ Échec de la publication du post Instagram")
+            # Vérifie si l'échec est dû à un token expiré
+            if facebook.is_token_expired_error():
+                email_notifier.send_token_expired_alert(
+                    platform="Instagram",
+                    token_name="FB_PAGE_ACCESS_TOKEN",
+                    error_detail=facebook.last_error_message,
+                )
         return published
 
     except Exception as exc:  # noqa: BLE001
@@ -183,9 +211,8 @@ def publish_news_threads(news: dict) -> bool:
 
     try:
         facebook = facebook_client.FacebookClient()
-        if not facebook.configure():
-            logger.error("Échec de la configuration Facebook/Threads")
-            return False
+        # Threads utilise son propre token — pas besoin de vérifier le token Facebook
+        facebook._is_configured = True
 
         image_url = news.get("image", "") or ""
         published = facebook.post_to_threads(message=news["breaking_text"], image_url=image_url)
@@ -193,6 +220,13 @@ def publish_news_threads(news: dict) -> bool:
             logger.info("✅ Post Threads publié : %s", news["title"][:60])
         else:
             logger.error("❌ Échec de la publication du post Threads")
+            # Vérifie si l'échec est dû à un token expiré
+            if facebook.is_token_expired_error():
+                email_notifier.send_token_expired_alert(
+                    platform="Threads",
+                    token_name="THREADS_ACCESS_TOKEN",
+                    error_detail=facebook.last_error_message,
+                )
         return published
 
     except Exception as exc:  # noqa: BLE001
@@ -215,6 +249,33 @@ def generate_news_job() -> None:
         publish_news_threads(news)
     else:
         logger.warning("⚠️  Échec de la génération de la breaking news")
+
+
+# ─────────────────────────────────────────────────────────────
+# Renouvellement automatique des tokens API
+# ─────────────────────────────────────────────────────────────
+def renew_tokens_job() -> None:
+    """
+    Vérifie et renouvelle les tokens Facebook et Threads.
+    Planifié tous les TOKEN_RENEWAL_DAYS jours (défaut : 30).
+    Envoie une notification email si un token est expiré ou invalide.
+    """
+    logger.info("=== Renouvellement automatique des tokens API ===")
+    try:
+        results = token_renewal.renew_all_tokens(send_email=True)
+        for platform, result in results.items():
+            status = result.get("status", "inconnu")
+            logger.info("  %-10s : %s", platform.upper(), status)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Erreur lors du renouvellement des tokens : %s", exc)
+        email_notifier.send_generic_alert(
+            subject="⚠️ Erreur lors du renouvellement automatique des tokens",
+            body=(
+                "Une erreur est survenue lors du renouvellement automatique des tokens.\n"
+                f"Erreur : {exc}\n"
+                f"Date : {datetime.now(timezone.utc).strftime('%d/%m/%Y %H:%M UTC')}"
+            ),
+        )
 
 
 # ─────────────────────────────────────────────────────────────
@@ -247,6 +308,22 @@ def setup_schedule() -> None:
                 schedule.every(interval).hours.do(generate_news_job)
                 logger.info("Breaking news planifiée : toutes les %d heures", interval)
 
+        # Renouvellement automatique des tokens API
+        # Tous les TOKEN_RENEWAL_DAYS jours (défaut : 30) — les tokens Meta
+        # durent 60 jours, ce renouvellement garantit qu'ils ne expirent jamais.
+        renewal_days = config.TOKEN_RENEWAL_DAYS
+        if renewal_days > 0:
+            schedule.every(renewal_days).days.do(renew_tokens_job)
+            logger.info(
+                "Renouvellement des tokens API planifié : tous les %d jours",
+                renewal_days,
+            )
+        else:
+            logger.warning(
+                "Renouvellement automatique des tokens désactivé (TOKEN_RENEWAL_DAYS=%d)",
+                renewal_days,
+            )
+
 
 def reschedule_global() -> None:
     """
@@ -264,6 +341,10 @@ def _catch_up_missed_posts(schedule_times: list) -> bool:
     Vérifie si une publication planifiée a été manquée au démarrage
     (ex: redémarrage du worker après l'heure planifiée).
 
+    Vérifie chaque heure planifiée individuellement : si l'heure est passée
+    et qu'aucun post n'a été publié à cette heure aujourd'hui, un rattrapage
+    est effectué.
+
     :return: True si un post de rattrapage a été exécuté, False sinon
     """
     if not schedule_times or config.NEWS_INTERVAL_HOURS > 0:
@@ -272,32 +353,35 @@ def _catch_up_missed_posts(schedule_times: list) -> bool:
     now = datetime.now(timezone.utc)
     current_time = now.strftime("%H:%M")
 
-    # Vérifie si on est passé après au moins une heure planifiée
-    passed_schedule = any(current_time >= t for t in schedule_times)
-    if not passed_schedule:
-        return False
-
-    # Vérifie si une publication a déjà été faite aujourd'hui
-    latest = database.get_latest_breaking_news()
-    if latest and latest.get("published_at"):
+    # Récupère les posts publiés aujourd'hui
+    published_times_today = set()
+    history = database.get_breaking_news_history(limit=50)
+    for item in history:
         try:
-            published_dt = datetime.fromisoformat(latest["published_at"])
+            published_dt = datetime.fromisoformat(item.get("published_at", ""))
             if published_dt.date() == now.date():
-                logger.info(
-                    "Un post a déjà été publié aujourd'hui (%s) — pas de rattrapage nécessaire",
-                    published_dt.strftime("%H:%M"),
-                )
-                return False
+                published_times_today.add(published_dt.strftime("%H:%M"))
         except (ValueError, TypeError):
-            pass
+            continue
 
-    logger.info("Publication planifiée manquée détectée — exécution d'un post de rattrapage")
-    try:
-        generate_news_job()
-        return True
-    except Exception as exc:  # noqa: BLE001
-        logger.error("Erreur lors du post de rattrapage : %s", exc)
-        return False
+    # Vérifie chaque heure planifiée
+    for scheduled_time in schedule_times:
+        # Si l'heure planifiée est passée et qu'aucun post n'a été fait à cette heure
+        if current_time >= scheduled_time and scheduled_time not in published_times_today:
+            logger.info(
+                "Post planifié à %s UTC manqué (dernier post : %s) — rattrapage en cours",
+                scheduled_time,
+                sorted(published_times_today) if published_times_today else "aucun",
+            )
+            try:
+                generate_news_job()
+                return True
+            except Exception as exc:  # noqa: BLE001
+                logger.error("Erreur lors du post de rattrapage : %s", exc)
+                return False
+
+    logger.info("Aucun post manqué — tous les posts planifiés ont été publiés")
+    return False
 
 
 # ─────────────────────────────────────────────────────────────
@@ -336,6 +420,21 @@ def _generate_initial_news() -> None:
         logger.error("Erreur lors de la génération initiale : %s", exc)
 
 
+def _check_tokens_on_startup() -> None:
+    """
+    Vérifie la validité des tokens API au démarrage (thread séparé).
+    Envoie une notification email si un token est expiré ou invalide.
+    """
+    logger.info("Vérification des tokens API au démarrage…")
+    try:
+        results = token_renewal.renew_all_tokens(send_email=True)
+        for platform, result in results.items():
+            status = result.get("status", "inconnu")
+            logger.info("  %-10s : %s", platform.upper(), status)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Erreur lors de la vérification des tokens au démarrage : %s", exc)
+
+
 def main() -> None:
     """Boucle principale : planification + publication + serveur web."""
     logger.info("🚀 Démarrage de l'agent — Veille IA & Tech + Breaking News")
@@ -360,6 +459,11 @@ def main() -> None:
     #    Le serveur web est déjà accessible pendant le scan des flux RSS
     initial_thread = threading.Thread(target=_generate_initial_news, daemon=True)
     initial_thread.start()
+
+    # 4bis. Vérification des tokens API au démarrage (thread séparé)
+    #    Envoie une notification email si un token est expiré ou invalide
+    token_check_thread = threading.Thread(target=_check_tokens_on_startup, daemon=True)
+    token_check_thread.start()
 
     # 5. Boucle infinie du worker
     logger.info("Boucle de planification active (Ctrl+C pour arrêter)…")

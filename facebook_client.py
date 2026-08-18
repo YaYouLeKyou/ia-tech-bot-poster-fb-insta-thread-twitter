@@ -86,9 +86,40 @@ def get_valid_instagram_image(caption: str, user_image_url: str = None, title: s
 class FacebookClient:
     """Client pour l'API Facebook / Meta."""
 
+    # Codes d'erreur Meta indiquant un token expiré/invalide
+    TOKEN_EXPIRED_CODES = {190, 467, 10, 200, 100}
+
     def __init__(self) -> None:
         self._is_configured = False
         self._token_type = "unknown"
+        self.last_error_message = ""
+        self._last_error_code = None
+
+    def is_token_expired_error(self) -> bool:
+        """
+        Vérifie si la dernière erreur rencontrée est due à un token expiré ou invalide.
+
+        :return: True si l'erreur est liée à un token expiré/invalide
+        """
+        if self._last_error_code is None:
+            return False
+        return self._last_error_code in self.TOKEN_EXPIRED_CODES
+
+    def _record_error(self, data: dict) -> None:
+        """
+        Enregistre le message et le code d'erreur de la dernière réponse API.
+
+        :param data: Réponse JSON de l'API Meta
+        """
+        error = data.get("error", {}) if isinstance(data, dict) else {}
+        self.last_error_message = error.get("message", "")
+        self._last_error_code = error.get("code")
+        if self._last_error_code in self.TOKEN_EXPIRED_CODES:
+            logger.error(
+                "⚠️  TOKEN EXPIRÉ OU INVALIDE détecté (code %s) : %s",
+                self._last_error_code,
+                self.last_error_message,
+            )
 
     def configure(self, verify_token: bool = True) -> bool:
         """
@@ -293,6 +324,7 @@ class FacebookClient:
                 logger.info("Post Facebook publié avec succès — ID : %s", post_id)
                 return True
 
+            self._record_error(data)
             error = data.get("error", {})
             logger.error(
                 "Erreur Facebook API (%d) : code=%s type=%s message=%s | page_id=%s | token_type=%s",
@@ -367,6 +399,7 @@ class FacebookClient:
             create_data = create_response.json()
 
             if create_response.status_code != 200 or "id" not in create_data:
+                self._record_error(create_data)
                 logger.error(
                     "Erreur création container Instagram (%d) : code=%s message=%s | ig_user_id=%s",
                     create_response.status_code,
@@ -405,6 +438,7 @@ class FacebookClient:
 
                 break
 
+            self._record_error(publish_data)
             logger.error(
                 "Erreur publication Instagram (%d) : code=%s message=%s | ig_user_id=%s",
                 publish_response.status_code if publish_response is not None else -1,
@@ -491,6 +525,7 @@ class FacebookClient:
             create_data = create_response.json()
 
             if create_response.status_code != 200 or "id" not in create_data:
+                self._record_error(create_data)
                 logger.error(
                     "Erreur création container Threads (%d) : code=%s message=%s | user_id=%s",
                     create_response.status_code,
@@ -529,6 +564,7 @@ class FacebookClient:
 
                 break
 
+            self._record_error(publish_data)
             logger.error(
                 "Erreur publication Threads (%d) : code=%s message=%s | user_id=%s",
                 publish_response.status_code if publish_response is not None else -1,

@@ -17,6 +17,7 @@ Agent IA autonome qui surveille les actualités **IA & Tech** via des flux RSS, 
 | 🔄 **Interface web** | Dashboard Flask pour publier maintenant, modifier les heures, changer l'intervalle |
 | ⏰ **Post minute** | Publication immédiate sur les plateformes sélectionnées |
 | 🔄 **Déploiement 24/7** | Background Worker Render / Railway (`Procfile` inclus) |
+| 🔑 **Renouvellement auto des tokens** | Vérifie et renouvelle les tokens Meta/Threads tous les 30 jours + alerte email en cas d'expiration |
 
 ## 📁 Structure du projet
 
@@ -29,6 +30,7 @@ agent-twitter/
 ├── ai_generator.py     # Génération tweet via DeepSeek/OpenAI
 ├── twitter_client.py   # Publication Twitter API V2 (tweepy)
 ├── facebook_client.py  # Publication Facebook/Instagram/Threads
+├── token_renewal.py    # Renouvellement automatique des tokens API
 ├── web_app.py          # Dashboard Flask + API REST
 ├── templates/
 │   └── index.html      # Interface web
@@ -166,6 +168,64 @@ Le dashboard permet de :
 - Activer/désactiver le mode intervalle
 - Publier immédiatement sur les plateformes sélectionnées
 
+## 🔑 Renouvellement automatique des tokens API
+
+Les tokens Meta (Facebook, Instagram, Threads) expirent après **60 jours**. Ce projet
+inclut un système de renouvellement automatique qui garantit que votre application
+**ne perd jamais l'accès** aux API.
+
+### Fonctionnement
+
+| Événement | Action |
+|---|---|
+| **Au démarrage** | Vérifie la validité des tokens Facebook et Threads |
+| **Tous les 30 jours** (configurable) | Renouvelle les tokens pour leur redonner 60 jours de validité |
+| **Token expiré/invalide** | Envoie une **notification email** à `ALERT_EMAIL` |
+| **Renouvellement réussi** | Envoie un email de confirmation avec le nouveau token |
+
+### Configuration
+
+Dans `.env` :
+
+```env
+# Identifiants de l'application Facebook (nécessaires pour fb_exchange_token)
+# https://developers.facebook.com/apps/ → votre app → Paramètres → Identifiants
+FB_APP_ID=
+FB_APP_SECRET=
+
+# Nombre de jours entre deux renouvellements (défaut : 30)
+TOKEN_RENEWAL_DAYS=30
+```
+
+### Utilisation manuelle
+
+```bash
+# Vérification seule (sans renouvellement)
+python token_renewal.py --check
+
+# Vérification + renouvellement
+python token_renewal.py
+```
+
+### Notifications email
+
+Pour activer les alertes email, configurez dans `.env` :
+
+```env
+SMTP_ENABLED=true
+ALERT_EMAIL=votre@email.com
+SMTP_HOST=smtp-mail.outlook.com
+SMTP_PORT=587
+SMTP_TLS=true
+SMTP_USERNAME=votre@email.com
+SMTP_PASSWORD=votre_mot_de_passe
+```
+
+> ⚠️ **Important** : pour que le renouvellement Facebook fonctionne, vous devez
+> renseigner `FB_APP_ID` et `FB_APP_SECRET` (disponibles sur
+> [developers.facebook.com](https://developers.facebook.com/apps/)).
+> Sans ces identifiants, le script vérifie le token mais ne peut pas le renouveler.
+
 ## 🌐 Déploiement continu (Render / Railway)
 
 ### Option 1 — Render (Background Worker) ✅ Recommandé
@@ -181,7 +241,7 @@ Variables à renseigner manuellement dans le dashboard Render :
 `TWITTER_API_KEY`, `TWITTER_API_SECRET`, `TWITTER_ACCESS_TOKEN`,
 `TWITTER_ACCESS_SECRET`, `TWITTER_BEARER_TOKEN`, `LLM_API_KEY`,
 `FB_PAGE_ACCESS_TOKEN`, `FACEBOOK_PAGE_ID`, `INSTAGRAM_ACCOUNT_ID`,
-`THREADS_ACCESS_TOKEN`, `THREADS_USER_ID`
+`THREADS_ACCESS_TOKEN`, `THREADS_USER_ID`, `FB_APP_ID`, `FB_APP_SECRET`
 
 ### Option 2 — Railway
 

@@ -28,22 +28,23 @@ services:
       - key: TWITTER_BEARER_TOKEN
         sync: false
 
-      # ── Clé API LLM (DeepSeek / OpenAI / Groq) ─────────────
+      # ── Clé API LLM (Gemini — OpenAI SDK compatible) ───────
       - key: LLM_API_KEY
         sync: false
       - key: LLM_BASE_URL
-        value: https://api.groq.com/openai/v1
+        value: https://generativelanguage.googleapis.com/v1beta/openai/
       - key: LLM_MODEL
-        value: llama-3.1-8b-instant
+        value: gemini-3.5-flash-lite
 
       # ── Planification (optionnel) ──────────────────────────
-      # Défaut : 08:30 et 17:30 UTC (2 tweets/jour)
+      # Défaut : 08:00, 12:00, 17:00, 20:00 UTC (4 posts/jour)
       - key: SCHEDULE_TIMES
-        value: "08:30,17:30"
+        value: "08:00,12:00,17:00,20:00"
 
       # ── Fréquence alternative (si SCHEDULE_TIMES est vide) ─
+      # 0 = désactivé — utilise les heures fixes SCHEDULE_TIMES
       - key: NEWS_INTERVAL_HOURS
-        value: "2"
+        value: "0"
 
       # ── Port du serveur web ────────────────────────────────
       - key: WEB_PORT
@@ -70,3 +71,46 @@ services:
         sync: false
       - key: INSTAGRAM_ACCOUNT_ID
         sync: false  # optionnel — lié à une page Instagram Business
+
+      # ── Renouvellement automatique des tokens ───────────────
+      # Identifiants de l'application Facebook (nécessaires pour fb_exchange_token)
+      # https://developers.facebook.com/apps/ → votre app → Paramètres → Identifiants
+      - key: FB_APP_ID
+        sync: false
+      - key: FB_APP_SECRET
+        sync: false
+
+      # Nombre de jours entre deux renouvellements automatiques des tokens.
+      # Les tokens Meta/Threads durent 60 jours — un renouvellement tous les
+      # 30 jours garantit une marge de sécurité confortable.
+      - key: TOKEN_RENEWAL_DAYS
+        value: "30"
+
+      # ── API Threads (Meta) ──────────────────────────────────
+      - key: THREADS_USER_ID
+        sync: false
+      - key: THREADS_ACCESS_TOKEN
+        sync: false
+
+      # ── Notification email (alerte token expiré) ────────────
+      # Adresse qui reçoit les alertes de token expiré
+      - key: ALERT_EMAIL
+        value: "yanes75@hotmail.fr"
+
+      # Activation de l'envoi d'emails (true/false)
+      - key: SMTP_ENABLED
+        value: "false"
+
+      # Configuration SMTP
+      - key: SMTP_HOST
+        value: "smtp-mail.outlook.com"
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_TLS
+        value: "true"
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM_EMAIL
+        value: "yanes75@hotmail.fr"

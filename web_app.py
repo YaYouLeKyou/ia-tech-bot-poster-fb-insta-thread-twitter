@@ -16,6 +16,7 @@ from flask import Flask, jsonify, render_template, request
 
 import config
 import database
+import email_notifier
 import facebook_client
 import news_service
 import twitter_client
@@ -354,6 +355,12 @@ def api_tweet_now():
                     progress[-1]["done"] = True
                     progress[-1]["success"] = False
                     progress[-1]["error"] = facebook_error
+                    # Notification email en cas de token expiré
+                    email_notifier.send_token_expired_alert(
+                        platform="Facebook",
+                        token_name="FB_PAGE_ACCESS_TOKEN",
+                        error_detail=facebook_error,
+                    )
             except Exception as exc:  # noqa: BLE001
                 logger.error("Erreur lors de la publication Facebook : %s", exc)
                 facebook_error = str(exc)
@@ -409,6 +416,12 @@ def api_tweet_now():
                     progress[-1]["done"] = True
                     progress[-1]["success"] = False
                     progress[-1]["error"] = instagram_error
+                    # Notification email en cas de token expiré
+                    email_notifier.send_token_expired_alert(
+                        platform="Instagram",
+                        token_name="FB_PAGE_ACCESS_TOKEN",
+                        error_detail=instagram_error,
+                    )
             except Exception as exc:  # noqa: BLE001
                 logger.error("Erreur lors de la publication Instagram : %s", exc)
                 instagram_error = str(exc)
@@ -457,6 +470,12 @@ def api_tweet_now():
                     progress[-1]["done"] = True
                     progress[-1]["success"] = False
                     progress[-1]["error"] = threads_error
+                    # Notification email en cas de token expiré
+                    email_notifier.send_token_expired_alert(
+                        platform="Threads",
+                        token_name="THREADS_ACCESS_TOKEN",
+                        error_detail=threads_error,
+                    )
             except Exception as exc:  # noqa: BLE001
                 logger.error("Erreur lors de la publication Threads : %s", exc)
                 threads_error = str(exc)
