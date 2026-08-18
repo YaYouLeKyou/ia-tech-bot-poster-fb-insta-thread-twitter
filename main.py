@@ -27,6 +27,7 @@ import facebook_client
 import news_service
 import twitter_client
 import web_app
+from web_app import _build_long_post_message
 
 # ─────────────────────────────────────────────────────────────
 # Journalisation (logs clairs formatés pour dashboard serveur)
@@ -108,7 +109,7 @@ def publish_news_facebook(news: dict) -> bool:
             logger.error("Échec de la configuration Facebook")
             return False
 
-        message = news["breaking_text"]
+        message = _build_long_post_message(news)
         link = news.get("url", "")
         published = facebook.post_to_page(message=message, link=link)
         if published:
@@ -150,7 +151,7 @@ def publish_news_instagram(news: dict) -> bool:
             return False
 
         image_url = news.get("image", "") or ""
-        published = facebook.post_to_instagram(message=news["breaking_text"], image_url=image_url)
+        published = facebook.post_to_instagram(message=_build_long_post_message(news), image_url=image_url)
         if published:
             logger.info("✅ Post Instagram publié : %s", news["title"][:60])
         else:
