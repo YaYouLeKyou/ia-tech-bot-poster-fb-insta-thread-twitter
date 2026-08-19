@@ -359,11 +359,10 @@ def _catch_up_missed_posts(schedule_times: list) -> bool:
     ou lors d'un réveil du worker (ex: plan gratuit Render qui s'endort
     après 15 min d'inactivité).
 
-    Vérifie chaque heure planifiée individuellement : si l'heure est passée
-    et qu'aucun post n'a été publié à cette heure aujourd'hui, un rattrapage
-    est effectué.
+    Limite le rattrapage à UN SEUL post par appel pour éviter un flood
+    de publications lors du redémarrage du service.
 
-    :return: True si au moins un post de rattrapage a été exécuté, False sinon
+    :return: True si un post de rattrapage a été exécuté, False sinon
     """
     if not schedule_times or config.NEWS_INTERVAL_HOURS > 0:
         return False
@@ -387,7 +386,6 @@ def _catch_up_missed_posts(schedule_times: list) -> bool:
         except (ValueError, TypeError):
             continue
 
-    caught_up_any = False
     # Vérifie chaque heure planifiée (ordonnée pour un rattrapage logique)
     for scheduled_time in sorted(schedule_times):
         # Si l'heure planifiée (Paris) est passée et qu'aucun post n'a été fait à cette heure
@@ -399,17 +397,12 @@ def _catch_up_missed_posts(schedule_times: list) -> bool:
             )
             try:
                 generate_news_job()
-                caught_up_any = True
+                reschedule_global()
+                logger.info("Rattrapage terminé — un post manqué a été publié")
+                return True
             except Exception as exc:  # noqa: BLE001
                 logger.error("Erreur lors du post de rattrapage : %s", exc)
-
-    if caught_up_any:
-        # Re-planifie pour "consommer" les heures déjà passées :
-        # sans cela, `schedule.run_pending()` ré-exécuterait le job en
-        # retard, provoquant un doublon au prochain cycle.
-        reschedule_global()
-        logger.info("Rattrapage terminé — au moins un post manqué a été publié")
-        return True
+                return False
 
     logger.info("Aucun post manqué — tous les posts planifiés ont été publiés")
     return False

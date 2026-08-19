@@ -241,7 +241,9 @@ SMTP_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", SMTP_USERNAME)
 AI_SYSTEM_PROMPT = (
     "Tu es un journaliste expert en Intelligence Artificielle et en Technologies. "
     "Ton style est informatif, concis et accrocheur. "
-    "Tu rédiges des tweets en français destinés à un public passionné de tech."
+    "Tu rédiges UNIQUEMENT des textes en français. "
+    "NE UTILISE JAMAIS L'ANGLAIS. "
+    "Tes tweets sont destinés à un public passionné de tech et d'IA."
 )
 
 AI_USER_PROMPT_TEMPLATE = (
@@ -252,7 +254,9 @@ AI_USER_PROMPT_TEMPLATE = (
     "URL : {url}\n"
     "Résumé : {summary}\n"
     "\n"
-    "Rédige un tweet en français respectant STRICTEMENT ces règles :\n"
+    "Rédige un tweet en français (OBLIGATOIRE). "
+    "NE RÉPONDS PAS EN ANGLAIS. "
+    "Respecte STRICTEMENT ces règles :\n"
     "1. Maximum {max_length} caractères (compte incluant les hashtags et le lien).\n"
     "2. Un ton journalistique informatif, avec une accroche percutante.\n"
     "3. Une synthèse claire des points essentiels de l'article.\n"
@@ -260,5 +264,6 @@ AI_USER_PROMPT_TEMPLATE = (
     "5. N'utilise que du texte : pas d'emojis, pas de citation du titre exact.\n"
     "6. Le tweet doit se terminer par le lien de l'article : {url}\n"
     "\n"
+    "IMPORTANT : Le tweet doit être 100% en français. "
     "Renvoie UNIQUEMENT le texte du tweet, sans guillemets ni commentaire."
 )

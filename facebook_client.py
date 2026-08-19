@@ -67,7 +67,7 @@ def get_valid_instagram_image(caption: str, user_image_url: str = None, title: s
     Retourne une URL d'image valide et accessible publiquement par l'API Instagram.
 
     1. Si une URL d'image valide est fournie (ex: image de l'article RSS), elle est utilisée.
-    2. Sinon, une vraie photo statique est utilisée comme fallback.
+    2. Sinon, une photo aléatoire parmi un pool de fallbacks tech/IA est utilisée.
     """
     if user_image_url and user_image_url.startswith("http"):
         try:
@@ -76,9 +76,20 @@ def get_valid_instagram_image(caption: str, user_image_url: str = None, title: s
                 logger.info("Utilisation de l'image RSS : %s", user_image_url)
                 return user_image_url
         except requests.RequestException:
-            logger.warning("L'URL d'image RSS n'est pas accessible. Utilisation de l'image de fallback...")
+            logger.warning("L'URL d'image RSS n'est pas accessible. Utilisation d'une image de fallback...")
 
-    fallback_image = "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=1080&h=1080&fit=crop"
+    import random
+    fallback_images = [
+        "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=1080&h=1080&fit=crop",
+        "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=1080&h=1080&fit=crop",
+        "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=1080&h=1080&fit=crop",
+        "https://images.unsplash.com/photo-1550751827-4bd374c3a6f6?w=1080&h=1080&fit=crop",
+        "https://images.unsplash.com/photo-1563986768609-322da13575f9?w=1080&h=1080&fit=crop",
+        "https://images.unsplash.com/photo-1518770660439-4636190af475?w=1080&h=1080&fit=crop",
+        "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1080&h=1080&fit=crop",
+        "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=1080&h=1080&fit=crop",
+    ]
+    fallback_image = random.choice(fallback_images)
     logger.info("Utilisation de l'image de fallback : %s", fallback_image)
     return fallback_image
 

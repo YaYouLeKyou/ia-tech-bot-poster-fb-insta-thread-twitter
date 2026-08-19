@@ -8,6 +8,7 @@ chacun, et les stocke en base pour affichage sur la page web.
 
 import logging
 import threading
+import time
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -70,6 +71,8 @@ def generate_breaking_news(force: bool = False) -> Optional[dict]:
         # 3. Génération des résumés "breaking news" par l'IA pour chaque article
         proposals = []
         for i, article in enumerate(best_articles):
+            if i > 0:
+                time.sleep(config.AI_GENERATION_DELAY)
             breaking_text = ai_generator.generate_tweet(
                 title=article.title,
                 url=article.url,
