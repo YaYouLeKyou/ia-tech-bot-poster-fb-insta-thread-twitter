@@ -129,33 +129,15 @@ def index():
 def ping():
     """
     Endpoint de réveil — utilisé par un cron externe (cron-job.org, UptimeRobot)
-    pour réveiller le worker Render (plan gratuit) et exécuter les posts planifiés.
+    pour réveiller le worker Render (plan gratuit).
 
     Sur le plan gratuit de Render, le worker s'endort après 15 min d'inactivité.
-    Ce ping réveille le serveur Flask et :
-      1. appelle schedule.run_pending() pour vérifier si une heure de publication
-         (08:00, 12:00, 17:00, 20:00 UTC) est due ;
-      2. vérifie si une publication planifiée a été manquée pendant le sommeil
-         (ex: worker endormi à 11:59, réveillé à 14:30 → rattrape le post de 12:00).
+    Ce ping réveille le serveur Flask. Le traitement des posts planifiés
+    est géré par la boucle schedule dans main.py.
 
-    Retourne "pong" pour confirmer que le réveil a fonctionné.
+    Retourne "pong" immédiatement pour confirmation.
     """
-    try:
-        import schedule as schedule_module
-        schedule_module.run_pending()
-
-        # Rattrapage des posts planifiés manqués pendant que le worker dormait
-        try:
-            import main as main_module
-            main_module._catch_up_missed_posts(config.SCHEDULE_TIMES)
-        except Exception as exc:  # noqa: BLE001
-            logger.error("Erreur lors du rattrapage des posts manqués : %s", exc)
-
-        logger.info("Ping reçu — posts planifiés vérifiés")
-        return "pong", 200
-    except Exception as exc:  # noqa: BLE001
-        logger.error("Erreur lors du ping : %s", exc)
-        return f"erreur: {exc}", 500
+    return "pong", 200
 
 
 @app.route("/api/latest")
