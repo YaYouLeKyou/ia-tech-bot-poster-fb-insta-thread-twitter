@@ -124,7 +124,7 @@ def publish_news_facebook(news: dict) -> bool:
             )
             return False
 
-        message = _build_long_post_message(news)
+        message = news.get("long_text") or _build_long_post_message(news)
         link = news.get("url", "")
         published = facebook.post_to_page(message=message, link=link)
         if published:
@@ -178,7 +178,7 @@ def publish_news_instagram(news: dict) -> bool:
             )
             return False
 
-        message = _build_long_post_message(news)
+        message = news.get("long_text") or _build_long_post_message(news)
         image_url = get_valid_instagram_image(
             caption=message,
             user_image_url=news.get("image") or "",

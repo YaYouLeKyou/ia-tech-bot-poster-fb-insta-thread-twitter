@@ -188,7 +188,8 @@ WEB_PORT = int(os.getenv("WEB_PORT", "5000"))
 # ─────────────────────────────────────────────────────────────
 # Publication
 # ─────────────────────────────────────────────────────────────
-MAX_TWEET_LENGTH = 230  # < 230 caractères, limite de sécurité
+MAX_TWEET_LENGTH = 230  # < 230 caractères, limite de sécurité Twitter
+MAX_LONG_POST_LENGTH = 2200  # limite Facebook/Instagram
 MAX_ARTICLES_TO_PROCESS = 30  # articles maximum scannés par exécution
 
 # ─────────────────────────────────────────────────────────────
@@ -282,4 +283,27 @@ AI_USER_PROMPT_TEMPLATE = (
     "\n"
     "IMPORTANT : Le tweet doit être 100% en français. "
     "Renvoie UNIQUEMENT le texte du tweet, sans guillemets ni commentaire."
+)
+
+AI_LONG_POST_PROMPT_TEMPLATE = (
+    "Voici le contenu d'un article de presse technologique :\n"
+    "\n"
+    "Titre : {title}\n"
+    "Source : {source}\n"
+    "URL : {url}\n"
+    "Résumé : {summary}\n"
+    "\n"
+    "Rédige un post Facebook/Instagram en français (OBLIGATOIRE). "
+    "NE RÉPONDS PAS EN ANGLAIS. "
+    "Si le titre ou le résumé sont en anglais, tu les traduis en français. "
+    "Respecte STRICTEMENT ces règles :\n"
+    "1. Maximum {max_length} caractères (compte incluant les hashtags et le lien).\n"
+    "2. Un ton journalistique informatif, avec une accroche percutante.\n"
+    "3. Une synthèse détaillée des points essentiels de l'article.\n"
+    "4. Termine par 3 hashtags ciblés et pertinents, par exemple #IA #Tech #Innovation.\n"
+    "5. N'utilise que du texte : pas d'emojis, pas de citation du titre exact.\n"
+    "6. Le post doit se terminer par le lien de l'article : {url}\n"
+    "\n"
+    "IMPORTANT : Le post doit être 100% en français. "
+    "Renvoie UNIQUEMENT le texte du post, sans guillemets ni commentaire."
 )

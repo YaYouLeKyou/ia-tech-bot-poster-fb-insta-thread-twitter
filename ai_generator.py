@@ -170,3 +170,66 @@ def generate_french_title(title: str, source: str, summary: str = "") -> Optiona
     except Exception as exc:  # noqa: BLE001
         logger.error("Erreur lors de la génération du titre français : %s", exc)
         return None
+
+
+def generate_long_post(title: str, url: str, source: str, summary: str = "") -> Optional[str]:
+    """
+    Génère un post long en français pour Facebook/Instagram à partir d'un article.
+
+    :param title: Titre de l'article
+    :param url: Lien de l'article
+    :param source: Nom de la source
+    :param summary: Résumé de l'article
+    :return: Post long prêt à publier (ou None si erreur)
+    """
+    if not config.LLM_API_KEY:
+        logger.error("LLM_API_KEY manquante dans l'environnement")
+        return None
+
+    prompt = config.AI_LONG_POST_PROMPT_TEMPLATE.format(
+        title=title,
+        source=source,
+        url=url,
+        summary=summary or "Pas de résumé disponible.",
+        max_length=config.MAX_LONG_POST_LENGTH,
+    )
+
+    try:
+        client = OpenAI(api_key=config.LLM_API_KEY, base_url=config.LLM_BASE_URL)
+
+        logger.info("Appel de l'IA (%s) pour générer le post long…", config.LLM_MODEL)
+        response = client.chat.completions.create(
+            model=config.LLM_MODEL,
+            messages=[
+                {"role": "system", "content": config.AI_SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.7,
+            max_tokens=800,
+        )
+
+        raw_post = response.choices[0].message.content or ""
+        long_post = _clean_generated_tweet(raw_post)
+
+        # Force la présence du lien à la fin si l'IA ne l'a pas inclus
+        if url not in long_post:
+            if len(long_post) + len(url) + 2 > config.MAX_LONG_POST_LENGTH:
+                long_post = long_post[: config.MAX_LONG_POST_LENGTH - len(url) - 3].rstrip() + "…"
+            long_post = f"{long_post}\n{url}".strip()
+
+        # Vérifie les hashtags — ajoute un fallback si absent
+        if not re.search(r"#[\wéàèêâîôûç]+", long_post):
+            hashtag = " #IA #Tech"
+            if len(long_post) + len(hashtag) <= config.MAX_LONG_POST_LENGTH:
+                long_post = f"{long_post}{hashtag}"
+
+        # Troncature finale de sécurité
+        if len(long_post) > config.MAX_LONG_POST_LENGTH:
+            long_post = _truncate_tweet(long_post, url)
+
+        logger.info("Post long généré : %d caractères", len(long_post))
+        return long_post
+
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Erreur lors de la génération du post long : %s", exc)
+        return None

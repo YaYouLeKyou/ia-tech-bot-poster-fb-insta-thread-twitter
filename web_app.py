@@ -398,7 +398,7 @@ def api_tweet_now():
             try:
                 facebook = facebook_client.FacebookClient()
                 if facebook.configure():
-                    facebook_message = _build_long_post_message(news)
+                    facebook_message = news.get("long_text") or _build_long_post_message(news)
                     facebook_published = facebook.post_to_page(
                         message=facebook_message,
                         link=news.get("url", ""),
@@ -459,7 +459,7 @@ def api_tweet_now():
                         user_image_url=news.get("image"),
                         title=news.get("title", ""),
                     )
-                    instagram_message = _build_long_post_message(news)
+                    instagram_message = news.get("long_text") or _build_long_post_message(news)
                     instagram_published = facebook.post_to_instagram(
                         message=instagram_message,
                         image_url=instagram_image,

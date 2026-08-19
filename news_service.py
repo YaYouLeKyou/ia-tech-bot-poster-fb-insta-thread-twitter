@@ -71,6 +71,7 @@ def generate_breaking_news(force: bool = False) -> Optional[dict]:
         # 3. Génération des résumés "breaking news" par l'IA pour chaque article
         proposals = []
         french_title = None
+        long_text = None
         for i, article in enumerate(best_articles):
             if i > 0:
                 time.sleep(config.AI_GENERATION_DELAY)
@@ -90,6 +91,22 @@ def generate_breaking_news(force: bool = False) -> Optional[dict]:
                         summary=article.summary,
                     )
                 time.sleep(2)
+                
+                long_text = ai_generator.generate_long_post(
+                    title=article.title,
+                    url=article.url,
+                    source=article.source,
+                    summary=article.summary,
+                )
+                if not long_text:
+                    logger.warning("Échec génération post long, nouvel essai dans 3s…")
+                    time.sleep(3)
+                    long_text = ai_generator.generate_long_post(
+                        title=article.title,
+                        url=article.url,
+                        source=article.source,
+                        summary=article.summary,
+                    )
             
             breaking_text = ai_generator.generate_tweet(
                 title=article.title,
@@ -130,6 +147,7 @@ def generate_breaking_news(force: bool = False) -> Optional[dict]:
             "source": proposals[0]["source"],
             "summary": proposals[0]["summary"],
             "breaking_text": proposals[0]["breaking_text"],
+            "long_text": long_text if 'long_text' in dir() else None,
             "published_at": now,
             "secondary_proposals": proposals[1:],
             "image": proposals[0].get("image"),

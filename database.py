@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS breaking_news (
     source TEXT,
     summary TEXT,
     breaking_text TEXT,
+    long_text TEXT,
     secondary_proposals TEXT,
     published_at TEXT NOT NULL DEFAULT (datetime('now')),
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -59,6 +60,13 @@ def init_db() -> None:
         conn.execute(CREATE_TABLE_SQL)
         conn.execute(CREATE_BREAKING_NEWS_TABLE_SQL)
         conn.commit()
+        # Migration : ajoute la colonne long_text si elle n'existe pas
+        try:
+            conn.execute("ALTER TABLE breaking_news ADD COLUMN long_text TEXT")
+            conn.commit()
+            logger.info("Colonne long_text ajoutée à breaking_news")
+        except sqlite3.OperationalError:
+            pass  # colonne déjà existante
         logger.info("Base de données initialisée : %s", config.DB_PATH)
     finally:
         conn.close()
@@ -154,8 +162,8 @@ def save_breaking_news(news: dict) -> None:
         conn.execute(
             """
             INSERT INTO breaking_news
-                (title, url, source, summary, breaking_text, secondary_proposals, published_at, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                (title, url, source, summary, breaking_text, long_text, secondary_proposals, published_at, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 news.get("title", ""),
@@ -163,6 +171,7 @@ def save_breaking_news(news: dict) -> None:
                 news.get("source", ""),
                 news.get("summary", ""),
                 news.get("breaking_text", ""),
+                news.get("long_text", ""),
                 secondary,
                 news.get("published_at", datetime.now(timezone.utc).isoformat()),
                 datetime.now(timezone.utc).isoformat(),
