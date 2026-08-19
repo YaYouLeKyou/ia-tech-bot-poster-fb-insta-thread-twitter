@@ -122,3 +122,51 @@ def generate_tweet(title: str, url: str, source: str, summary: str = "") -> Opti
     except Exception as exc:  # noqa: BLE001
         logger.error("Erreur lors de la génération IA : %s", exc)
         return None
+
+
+def generate_french_title(title: str, source: str, summary: str = "") -> Optional[str]:
+    """
+    Génère un titre court en français à partir d'un article.
+
+    :param title: Titre original de l'article
+    :param source: Nom de la source
+    :param summary: Résumé de l'article
+    :return: Titre français (ou None si erreur)
+    """
+    if not config.LLM_API_KEY:
+        logger.error("LLM_API_KEY manquante dans l'environnement")
+        return None
+
+    prompt = config.AI_TITLE_PROMPT_TEMPLATE.format(
+        title=title,
+        source=source,
+        summary=summary or "Pas de résumé disponible.",
+    )
+
+    try:
+        client = OpenAI(api_key=config.LLM_API_KEY, base_url=config.LLM_BASE_URL)
+
+        logger.info("Appel de l'IA (%s) pour générer le titre français…", config.LLM_MODEL)
+        response = client.chat.completions.create(
+            model=config.LLM_MODEL,
+            messages=[
+                {"role": "system", "content": config.AI_SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.7,
+            max_tokens=100,
+        )
+
+        raw_title = response.choices[0].message.content or ""
+        french_title = _clean_generated_tweet(raw_title)
+
+        if not french_title:
+            logger.warning("Titre français vide généré pour : %s", title[:60])
+            return None
+
+        logger.info("Titre français généré : %s", french_title)
+        return french_title
+
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Erreur lors de la génération du titre français : %s", exc)
+        return None

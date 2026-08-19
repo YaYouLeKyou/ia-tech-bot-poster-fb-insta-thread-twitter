@@ -70,9 +70,27 @@ def generate_breaking_news(force: bool = False) -> Optional[dict]:
 
         # 3. Génération des résumés "breaking news" par l'IA pour chaque article
         proposals = []
+        french_title = None
         for i, article in enumerate(best_articles):
             if i > 0:
                 time.sleep(config.AI_GENERATION_DELAY)
+            
+            if i == 0:
+                french_title = ai_generator.generate_french_title(
+                    title=article.title,
+                    source=article.source,
+                    summary=article.summary,
+                )
+                if not french_title:
+                    logger.warning("Échec génération titre français, nouvel essai dans 3s…")
+                    time.sleep(3)
+                    french_title = ai_generator.generate_french_title(
+                        title=article.title,
+                        source=article.source,
+                        summary=article.summary,
+                    )
+                time.sleep(2)
+            
             breaking_text = ai_generator.generate_tweet(
                 title=article.title,
                 url=article.url,
@@ -107,7 +125,7 @@ def generate_breaking_news(force: bool = False) -> Optional[dict]:
         # 4. Construction de l'objet news (principale + secondaires)
         now = datetime.now(timezone.utc).isoformat()
         news = {
-            "title": proposals[0]["title"],
+            "title": french_title or proposals[0]["title"],
             "url": proposals[0]["url"],
             "source": proposals[0]["source"],
             "summary": proposals[0]["summary"],

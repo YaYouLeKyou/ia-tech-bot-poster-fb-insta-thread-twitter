@@ -14,6 +14,7 @@ Déploiement : Render / Railway Worker (`worker: python main.py`)
 """
 
 import logging
+import os
 import sys
 import threading
 import time
@@ -360,19 +361,31 @@ def _catch_up_missed_posts(schedule_times: list) -> bool:
     ou lors d'un réveil du worker (ex: plan gratuit Render qui s'endort
     après 15 min d'inactivité).
 
-    Limite le rattrapage à UN SEUL post par appel pour éviter un flood
-    de publications lors du redémarrage du service.
+    Limite le rattrapage à UN SEUL post par jour pour éviter un flood
+    de publications lors de redémarrages multiples.
 
     :return: True si un post de rattrapage a été exécuté, False sinon
     """
     if not schedule_times or config.NEWS_INTERVAL_HOURS > 0:
         return False
 
-    # Les heures sont en heure de Paris — nous devons comparer en heure de Paris
     from zoneinfo import ZoneInfo
     paris_tz = ZoneInfo(config.LOCAL_TIMEZONE)
     now = datetime.now(paris_tz)  # heure de Paris
+    current_date = now.strftime("%Y-%m-%d")
     current_time = now.strftime("%H:%M")
+
+    # Lock journalier : empêche plusieurs rattrapages le même jour
+    lock_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".catch_up_lock")
+    try:
+        if os.path.exists(lock_path):
+            with open(lock_path, "r", encoding="utf-8") as f:
+                last_lock_date = f.read().strip()
+            if last_lock_date == current_date:
+                logger.info("Rattrapage déjà effectué aujourd'hui (%s)", current_date)
+                return False
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Impossible de lire le lock de rattrapage : %s", exc)
 
     # Récupère les posts publiés aujourd'hui (publiés en UTC, convertis en heure Paris)
     published_times_today = set()
@@ -380,7 +393,6 @@ def _catch_up_missed_posts(schedule_times: list) -> bool:
     for item in history:
         try:
             published_dt = datetime.fromisoformat(item.get("published_at", ""))
-            # Le timestamp est stocké en UTC — on le convertit en heure de Paris
             paris_dt = published_dt.astimezone(paris_tz)
             if paris_dt.date() == now.date():
                 published_times_today.add(paris_dt.strftime("%H:%M"))
@@ -389,7 +401,6 @@ def _catch_up_missed_posts(schedule_times: list) -> bool:
 
     # Vérifie chaque heure planifiée (ordonnée pour un rattrapage logique)
     for scheduled_time in sorted(schedule_times):
-        # Si l'heure planifiée (Paris) est passée et qu'aucun post n'a été fait à cette heure
         if scheduled_time in _caught_up_times:
             continue
         if current_time >= scheduled_time and scheduled_time not in published_times_today:
@@ -402,6 +413,14 @@ def _catch_up_missed_posts(schedule_times: list) -> bool:
                 generate_news_job()
                 reschedule_global()
                 _caught_up_times.add(scheduled_time)
+
+                # Écriture du lock journalier
+                try:
+                    with open(lock_path, "w", encoding="utf-8") as f:
+                        f.write(current_date)
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("Impossible d'écrire le lock de rattrapage : %s", exc)
+
                 logger.info("Rattrapage terminé — un post manqué a été publié")
                 return True
             except Exception as exc:  # noqa: BLE001

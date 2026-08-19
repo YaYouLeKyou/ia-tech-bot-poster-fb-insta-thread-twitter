@@ -243,7 +243,22 @@ AI_SYSTEM_PROMPT = (
     "Ton style est informatif, concis et accrocheur. "
     "Tu rédiges UNIQUEMENT des textes en français. "
     "NE UTILISE JAMAIS L'ANGLAIS. "
+    "Si le titre ou le résumé de l'article sont en anglais, tu les traduis en français. "
     "Tes tweets sont destinés à un public passionné de tech et d'IA."
+)
+
+AI_TITLE_PROMPT_TEMPLATE = (
+    "Voici le contenu d'un article de presse technologique :\n"
+    "\n"
+    "Titre : {title}\n"
+    "Source : {source}\n"
+    "Résumé : {summary}\n"
+    "\n"
+    "Rédige un titre COURT en français (OBLIGATOIRE). "
+    "NE RÉPONDS PAS EN ANGLAIS. "
+    "Si le titre est en anglais, tu le traduis en français. "
+    "Maximum 100 caractères. "
+    "Renvoie UNIQUEMENT le titre, sans guillemets ni commentaire."
 )
 
 AI_USER_PROMPT_TEMPLATE = (
@@ -254,8 +269,9 @@ AI_USER_PROMPT_TEMPLATE = (
     "URL : {url}\n"
     "Résumé : {summary}\n"
     "\n"
-    "Rédige un tweet en français (OBLIGATOIRE). "
+    "Rédige un tweet 100% en français (OBLIGATOIRE). "
     "NE RÉPONDS PAS EN ANGLAIS. "
+    "Si le titre ou le résumé sont en anglais, tu les traduis en français. "
     "Respecte STRICTEMENT ces règles :\n"
     "1. Maximum {max_length} caractères (compte incluant les hashtags et le lien).\n"
     "2. Un ton journalistique informatif, avec une accroche percutante.\n"
