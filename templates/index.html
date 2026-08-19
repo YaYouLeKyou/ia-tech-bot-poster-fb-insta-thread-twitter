@@ -977,7 +977,7 @@
                 {% else %}
                 <span class="status-badge threads-off">⏸️ Threads désactivé</span>
                 {% endif %}
-                <span class="status-badge schedule">🕐 Publication : {{ schedule_times|join(' & ') }} UTC</span>
+                <span class="status-badge schedule">🕐 Publication : {{ schedule_times|join(' & ') }} (heure de Paris)</span>
             </div>
         </header>
 
@@ -986,11 +986,11 @@
 
             <!-- Planification des heures de publication -->
             <div class="controls">
-                <div class="controls-group-title">🕐 Heures de publication (UTC)</div>
+                <div class="controls-group-title">🕐 Heures de publication (heure de Paris)</div>
                 <div class="schedule-grid">
                     <div class="schedule-item">
                         <label for="scheduleTime1">Publication 1 :</label>
-                        <input type="time" id="scheduleTime1" class="time-input" value="{{ schedule_times[0] if schedule_times|length > 0 else '08:00' }}">
+                        <input type="time" id="scheduleTime1" class="time-input" value="{{ schedule_times[0] if schedule_times|length > 0 else '07:00' }}">
                     </div>
                     <div class="schedule-item">
                         <label for="scheduleTime2">Publication 2 :</label>
@@ -1006,7 +1006,7 @@
                     </div>
                 </div>
                 <button onclick="saveSchedule()" class="btn btn-secondary">💾 Enregistrer les heures</button>
-                <div class="schedule-hint">Les publications automatiques auront lieu à ces heures fixes (format UTC). Laissez un champ vide pour l'ignorer.</div>
+                <div class="schedule-hint">Les publications automatiques auront lieu à ces heures fixes (heure de Paris). Laissez un champ vide pour l'ignorer.</div>
             </div>
 
             <!-- Post minute : publication immédiate sur les plateformes sélectionnées -->
@@ -1380,7 +1380,7 @@
                     throw new Error(data.error || 'Erreur lors de l\'enregistrement des heures');
                 }
 
-                showToast('✅ Heures de publication enregistrées : ' + data.times.join(' & ') + ' UTC');
+                showToast('✅ Heures de publication enregistrées : ' + data.times.join(' & ') + ' (heure de Paris)');
             } catch (error) {
                 showToast('❌ ' + error.message, true);
             }

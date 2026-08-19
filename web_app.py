@@ -9,6 +9,7 @@ par le scraper, avec :
 """
 
 import logging
+import os
 import re
 from datetime import datetime, timezone
 
@@ -25,18 +26,57 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
+# Fichier .env pour persistance des réglages modifiés via le dashboard
+ENV_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+
+
+def _update_env_var(key: str, value: str) -> bool:
+    """Met à jour une variable dans le fichier .env (persistance)."""
+    try:
+        if not os.path.exists(ENV_FILE):
+            with open(ENV_FILE, "w", encoding="utf-8") as f:
+                f.write(f"{key}={value}\n")
+            return True
+
+        with open(ENV_FILE, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+
+        found = False
+        for i, line in enumerate(lines):
+            if line.strip().startswith(f"{key}="):
+                lines[i] = f"{key}={value}\n"
+                found = True
+                break
+
+        if not found:
+            lines.append(f"{key}={value}\n")
+
+        with open(ENV_FILE, "w", encoding="utf-8") as f:
+            f.writelines(lines)
+
+        logger.info("✅ %s mis à jour dans .env", key)
+        return True
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Erreur mise à jour .env (%s) : %s", key, exc)
+        return False
+
 # Fréquences disponibles (en heures)
 # 0 = désactivé (publication uniquement aux heures planifiées)
 AVAILABLE_INTERVALS = [0, 2, 4, 6, 8, 12, 24, 48]
 
 
 def _format_date(iso_str: str) -> str:
-    """Convertit une date ISO en format lisible."""
+    """Convertit une date ISO (UTC) en format lisible en heure de Paris."""
     if not iso_str:
         return ""
     try:
+        from zoneinfo import ZoneInfo
+
         dt = datetime.fromisoformat(iso_str)
-        return dt.strftime("%d/%m/%Y à %H:%M")
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        paris_dt = dt.astimezone(ZoneInfo(config.LOCAL_TIMEZONE))
+        return paris_dt.strftime("%d/%m/%Y à %H:%M")
     except (ValueError, TypeError):
         return iso_str
 
@@ -63,12 +103,15 @@ def index():
     instagram_configured = bool(config.FB_PAGE_ACCESS_TOKEN and config.INSTAGRAM_ACCOUNT_ID)
     threads_configured = bool(config.THREADS_ACCESS_TOKEN and config.THREADS_USER_ID)
 
+    from zoneinfo import ZoneInfo
+    paris_now = datetime.now(ZoneInfo(config.LOCAL_TIMEZONE))
     return render_template(
         "index.html",
         latest=latest,
         history=history,
         stats=stats,
-        now=datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC"),
+        now=paris_now.strftime("%d/%m/%Y %H:%M (heure de Paris)"),
+        paris_timezone=config.LOCAL_TIMEZONE,
         available_intervals=AVAILABLE_INTERVALS,
         current_interval=current_interval,
         schedule_times=schedule_times,
@@ -89,13 +132,25 @@ def ping():
     pour réveiller le worker Render (plan gratuit) et exécuter les posts planifiés.
 
     Sur le plan gratuit de Render, le worker s'endort après 15 min d'inactivité.
-    Ce ping réveille le serveur Flask et appelle schedule.run_pending()
-    pour vérifier si une heure de publication (08:00, 12:00, 17:00, 20:00 UTC)
-    est due. Retourne "pong" pour confirmer que le réveil a fonctionné.
+    Ce ping réveille le serveur Flask et :
+      1. appelle schedule.run_pending() pour vérifier si une heure de publication
+         (08:00, 12:00, 17:00, 20:00 UTC) est due ;
+      2. vérifie si une publication planifiée a été manquée pendant le sommeil
+         (ex: worker endormi à 11:59, réveillé à 14:30 → rattrape le post de 12:00).
+
+    Retourne "pong" pour confirmer que le réveil a fonctionné.
     """
     try:
         import schedule as schedule_module
         schedule_module.run_pending()
+
+        # Rattrapage des posts planifiés manqués pendant que le worker dormait
+        try:
+            import main as main_module
+            main_module._catch_up_missed_posts(config.SCHEDULE_TIMES)
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Erreur lors du rattrapage des posts manqués : %s", exc)
+
         logger.info("Ping reçu — posts planifiés vérifiés")
         return "pong", 200
     except Exception as exc:  # noqa: BLE001
@@ -202,6 +257,9 @@ def api_set_interval():
     config.NEWS_INTERVAL_HOURS = interval
     logger.info("Fréquence de mise à jour changée : %s", "désactivée" if interval == 0 else f"toutes les {interval} heures")
 
+    # Persistance dans .env pour que la fréquence survive au redémarrage
+    _update_env_var("NEWS_INTERVAL_HOURS", str(interval))
+
     import main as main_module
     main_module.reschedule_global()
 
@@ -232,11 +290,15 @@ def api_set_schedule():
     # Mise à jour de la configuration et re-planification
     config.SCHEDULE_TIMES = valid_times
 
+    # Persistance dans .env pour que les heures survivent au redémarrage
+    # du worker Render (plan gratuit : redémarrages fréquents)
+    _update_env_var("SCHEDULE_TIMES", ",".join(valid_times))
+
     import main as main_module
     main_module.reschedule_global()
 
-    logger.info("Heures de publication mises à jour : %s UTC", valid_times)
-    return jsonify({"success": True, "times": valid_times})
+    logger.info("Heures de publication mises à jour : %s (heure de Paris)", valid_times)
+    return jsonify({"success": True, "times": valid_times, "timezone": config.LOCAL_TIMEZONE})
 
 
 def _build_long_post_message(news: dict) -> str:

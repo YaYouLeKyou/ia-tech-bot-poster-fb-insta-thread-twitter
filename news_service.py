@@ -27,21 +27,29 @@ NUM_PROPOSALS = 3
 _breaking_news_lock = threading.Lock()
 
 
-def generate_breaking_news() -> Optional[dict]:
+def generate_breaking_news(force: bool = False) -> Optional[dict]:
     """
     Génère une breaking news AI à partir des derniers articles RSS.
 
+    :param force: Si True, ignore le verrou anti-concurrence (utilisé par
+                  l'API web /api/refresh et /api/tweet-now).
     :return: dict avec les infos de la news, ou None si échec
     """
     logger.info("=== Génération d'une breaking news AI ===")
 
     # Empêche l'exécution concurrente (superposition job planifié + API)
-    if not _breaking_news_lock.acquire(blocking=False):
-        logger.warning(
-            "Génération de breaking news déjà en cours — appel ignoré. "
-            "Attendez que le cycle précédent se termine."
-        )
-        return None
+    if force:
+        # En mode force (appel via l'interface web), on attend que le verrou
+        # soit libéré — requête bloquante mais simple.
+        _breaking_news_lock.acquire(blocking=True)
+    else:
+        # Sinon, si un job est déjà en cours, on échoue immédiatement.
+        if not _breaking_news_lock.acquire(blocking=False):
+            logger.warning(
+                "Génération de breaking news déjà en cours — appel ignoré. "
+                "Attendez que le cycle précédent se termine."
+            )
+            return None
 
     try:
         # 1. Récupération des nouveaux articles RSS (non encore traités)
@@ -124,6 +132,76 @@ def generate_breaking_news() -> Optional[dict]:
             len(news["secondary_proposals"]),
         )
         return news
+    finally:
+        _breaking_news_lock.release()
+
+
+def generate_proposal() -> Optional[dict]:
+    """
+    Génère une seule proposition secondaire (article non traité).
+    Utilisé par le bouton 🔄 des cartes "Autres propositions".
+
+    :return: dict avec titre, url, source, summary, breaking_text, image, ou None
+    """
+    logger.info("=== Génération d'une proposition secondaire ===")
+
+    # Empêche l'exécution concurrente avec un cycle complet
+    if not _breaking_news_lock.acquire(blocking=False):
+        logger.warning(
+            "Génération de breaking news déjà en cours — appel ignoré. "
+            "Attendez que le cycle précédent se termine."
+        )
+        return None
+
+    try:
+        # 1. Récupération des nouveaux articles RSS (non encore traités)
+        articles = rss_parser.fetch_new_articles(max_items=config.MAX_ARTICLES_TO_PROCESS)
+
+        if not articles:
+            logger.warning("Aucun article disponible pour une proposition secondaire.")
+            return None
+
+        # 2. Sélection du premier article
+        article = articles[0]
+
+        # 3. Génération du texte par l'IA
+        breaking_text = ai_generator.generate_tweet(
+            title=article.title,
+            url=article.url,
+            source=article.source,
+            summary=article.summary,
+        )
+
+        if not breaking_text:
+            logger.warning("Échec de la génération IA pour la proposition secondaire")
+            # Marque l'article comme traité pour ne pas bloquer indéfiniment
+            database.mark_article_processed(
+                url=article.url,
+                title=article.title,
+                source=article.source,
+                tweet_text="",
+            )
+            return None
+
+        proposal = {
+            "title": article.title,
+            "url": article.url,
+            "source": article.source,
+            "summary": article.summary,
+            "breaking_text": breaking_text,
+            "image": article.image,
+        }
+
+        # 4. Marque l'article comme traité (anti-doublons)
+        database.mark_article_processed(
+            url=article.url,
+            title=article.title,
+            source=article.source,
+            tweet_text=breaking_text,
+        )
+
+        logger.info("Proposition secondaire générée : %s", article.title[:60])
+        return proposal
     finally:
         _breaking_news_lock.release()
 

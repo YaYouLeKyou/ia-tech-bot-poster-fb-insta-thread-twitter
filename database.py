@@ -206,6 +206,40 @@ def get_latest_breaking_news() -> Optional[dict]:
         conn.close()
 
 
+def clear_breaking_news_history() -> int:
+    """
+    Vide la table des breaking news.
+
+    :return: Nombre de lignes supprimées
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.execute("DELETE FROM breaking_news")
+        conn.commit()
+        removed = cursor.rowcount
+        logger.info("Historique des breaking news vidé : %d lignes supprimées", removed)
+        return removed
+    finally:
+        conn.close()
+
+
+def clear_processed_articles() -> int:
+    """
+    Vide la table des articles traités (cache anti-doublons).
+
+    :return: Nombre de lignes supprimées
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.execute("DELETE FROM processed_articles")
+        conn.commit()
+        removed = cursor.rowcount
+        logger.info("Articles traités vidés : %d lignes supprimées", removed)
+        return removed
+    finally:
+        conn.close()
+
+
 def get_breaking_news_history(limit: int = 50) -> list:
     """
     Retourne l'historique des breaking news (plus récentes d'abord).

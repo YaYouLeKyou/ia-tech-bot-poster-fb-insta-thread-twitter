@@ -31,6 +31,12 @@ import twitter_client
 import web_app
 from web_app import _build_long_post_message
 
+# Import de la fonction utilitaire pour le fallback d'image Instagram
+from facebook_client import get_valid_instagram_image
+
+# Conversion heure de Paris ↔ UTC
+from config import paris_time_to_utc, utc_time_to_paris
+
 # ─────────────────────────────────────────────────────────────
 # Journalisation (logs clairs formatés pour dashboard serveur)
 # ─────────────────────────────────────────────────────────────
@@ -171,8 +177,13 @@ def publish_news_instagram(news: dict) -> bool:
             )
             return False
 
-        image_url = news.get("image", "") or ""
-        published = facebook.post_to_instagram(message=_build_long_post_message(news), image_url=image_url)
+        message = _build_long_post_message(news)
+        image_url = get_valid_instagram_image(
+            caption=message,
+            user_image_url=news.get("image") or "",
+            title=news.get("title", ""),
+        )
+        published = facebook.post_to_instagram(message=message, image_url=image_url)
         if published:
             logger.info("✅ Post Instagram publié : %s", news["title"][:60])
         else:
@@ -301,12 +312,18 @@ def setup_schedule() -> None:
             logger.info("Breaking news planifiée : toutes les %d heures", interval)
         else:
             for time_str in schedule_times:
-                schedule.every().day.at(time_str).do(generate_news_job)
-                logger.info("Breaking news planifiée : %s UTC", time_str)
+                # Les heures de la config sont TOUJOURS en heure de Paris.
+                # Le paramètre `tz` de schedule gère automatiquement l'heure
+                # d'été (UTC+2) et l'heure d'hiver (UTC+1) — pas de conversion manuelle.
+                schedule.every().day.at(time_str, tz=config.LOCAL_TIMEZONE).do(generate_news_job)
+                logger.info("Breaking news planifiée : %s (heure Paris)", time_str)
 
             if not schedule_times:
-                schedule.every(interval).hours.do(generate_news_job)
-                logger.info("Breaking news planifiée : toutes les %d heures", interval)
+                # Protection contre schedule.every(0).hours (heure locale invalide).
+                # Si NEWS_INTERVAL_HOURS=0 et aucune heure fixe, on utilise 6h.
+                default_interval = interval if interval > 0 else 6
+                schedule.every(default_interval).hours.do(generate_news_job)
+                logger.info("Breaking news planifiée : toutes les %d heures", default_interval)
 
         # Renouvellement automatique des tokens API
         # Tous les TOKEN_RENEWAL_DAYS jours (défaut : 30) — les tokens Meta
@@ -339,46 +356,60 @@ def reschedule_global() -> None:
 def _catch_up_missed_posts(schedule_times: list) -> bool:
     """
     Vérifie si une publication planifiée a été manquée au démarrage
-    (ex: redémarrage du worker après l'heure planifiée).
+    ou lors d'un réveil du worker (ex: plan gratuit Render qui s'endort
+    après 15 min d'inactivité).
 
     Vérifie chaque heure planifiée individuellement : si l'heure est passée
     et qu'aucun post n'a été publié à cette heure aujourd'hui, un rattrapage
     est effectué.
 
-    :return: True si un post de rattrapage a été exécuté, False sinon
+    :return: True si au moins un post de rattrapage a été exécuté, False sinon
     """
     if not schedule_times or config.NEWS_INTERVAL_HOURS > 0:
         return False
 
-    now = datetime.now(timezone.utc)
+    # Les heures sont en heure de Paris — nous devons comparer en heure de Paris
+    from zoneinfo import ZoneInfo
+    paris_tz = ZoneInfo(config.LOCAL_TIMEZONE)
+    now = datetime.now(paris_tz)  # heure de Paris
     current_time = now.strftime("%H:%M")
 
-    # Récupère les posts publiés aujourd'hui
+    # Récupère les posts publiés aujourd'hui (publiés en UTC, convertis en heure Paris)
     published_times_today = set()
     history = database.get_breaking_news_history(limit=50)
     for item in history:
         try:
             published_dt = datetime.fromisoformat(item.get("published_at", ""))
-            if published_dt.date() == now.date():
-                published_times_today.add(published_dt.strftime("%H:%M"))
+            # Le timestamp est stocké en UTC — on le convertit en heure de Paris
+            paris_dt = published_dt.astimezone(paris_tz)
+            if paris_dt.date() == now.date():
+                published_times_today.add(paris_dt.strftime("%H:%M"))
         except (ValueError, TypeError):
             continue
 
-    # Vérifie chaque heure planifiée
-    for scheduled_time in schedule_times:
-        # Si l'heure planifiée est passée et qu'aucun post n'a été fait à cette heure
+    caught_up_any = False
+    # Vérifie chaque heure planifiée (ordonnée pour un rattrapage logique)
+    for scheduled_time in sorted(schedule_times):
+        # Si l'heure planifiée (Paris) est passée et qu'aucun post n'a été fait à cette heure
         if current_time >= scheduled_time and scheduled_time not in published_times_today:
             logger.info(
-                "Post planifié à %s UTC manqué (dernier post : %s) — rattrapage en cours",
+                "Post planifié à %s (heure Paris) manqué (dernier post : %s) — rattrapage en cours",
                 scheduled_time,
                 sorted(published_times_today) if published_times_today else "aucun",
             )
             try:
                 generate_news_job()
-                return True
+                caught_up_any = True
             except Exception as exc:  # noqa: BLE001
                 logger.error("Erreur lors du post de rattrapage : %s", exc)
-                return False
+
+    if caught_up_any:
+        # Re-planifie pour "consommer" les heures déjà passées :
+        # sans cela, `schedule.run_pending()` ré-exécuterait le job en
+        # retard, provoquant un doublon au prochain cycle.
+        reschedule_global()
+        logger.info("Rattrapage terminé — au moins un post manqué a été publié")
+        return True
 
     logger.info("Aucun post manqué — tous les posts planifiés ont été publiés")
     return False

@@ -8,8 +8,11 @@ Centralise :
   - le prompt de génération IA
 """
 
+import logging
 import os
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 # Chargement des variables d'environnement (.env)
 load_dotenv()
@@ -99,9 +102,14 @@ DB_PATH = os.getenv("DB_PATH", "news_bot.db")
 
 # ─────────────────────────────────────────────────────────────
 # Planification — Breaking News par heures fixes
-# Défaut : 08:00, 12:00, 17:00, 20:00 UTC (configurable via .env)
+# Défaut : 07:00, 12:00, 17:00, 20:00 heure de PARIS (configurable via .env)
+# Les heures saisies dans l'interface / .env sont TOUJOURS en heure de Paris.
+# La conversion vers UTC est automatique (gère l'heure d'été/hiver).
 # ─────────────────────────────────────────────────────────────
-DEFAULT_SCHEDULE_TIMES = ["08:00", "12:00", "17:00", "20:00"]
+DEFAULT_SCHEDULE_TIMES = ["07:00", "12:00", "17:00", "20:00"]
+
+# Fuseau horaire de publication (heure de Paris)
+LOCAL_TIMEZONE = "Europe/Paris"
 
 _env_schedule = os.getenv("SCHEDULE_TIMES", "").strip()
 if _env_schedule:
@@ -114,6 +122,63 @@ else:
 # Fréquence de génération des breaking news (en heures)
 # Défaut : 0 = désactivé (utiliser les heures fixes)
 NEWS_INTERVAL_HOURS = int(os.getenv("NEWS_INTERVAL_HOURS", "0"))
+
+
+def paris_time_to_utc(hhmm: str) -> str:
+    """
+    Convertit une heure de Paris (HH:MM) en heure UTC (HH:MM).
+    Gère automatiquement l'heure d'été (UTC+2) et l'heure d'hiver (UTC+1).
+    Utilise la date ACTUELLE pour un décalage correct été/hiver.
+
+    :param hhmm: Heure au format HH:MM (heure de Paris)
+    :return: Heure UTC correspondante au format HH:MM
+    """
+    try:
+        from datetime import datetime, timezone
+        from zoneinfo import ZoneInfo
+
+        hour_str, minute_str = hhmm.strip().split(":")
+        paris_tz = ZoneInfo(LOCAL_TIMEZONE)
+        # Utilise la date du jour pour un calcul correct été/hiver.
+        now = datetime.now(paris_tz)
+        naive = now.replace(hour=int(hour_str), minute=int(minute_str), second=0, microsecond=0)
+        utc_dt = naive.astimezone(timezone.utc)
+        return utc_dt.strftime("%H:%M")
+    except (ValueError, TypeError, ImportError) as exc:
+        # Fallback : retourne l'heure inchangée (considérée déjà UTC)
+        logger.warning(
+            "Impossible de convertir %s Paris → UTC (%s). Heure utilisée telle quelle.",
+            hhmm, exc,
+        )
+        return hhmm
+
+
+def utc_time_to_paris(hhmm: str) -> str:
+    """
+    Convertit une heure UTC (HH:MM) en heure de Paris (HH:MM).
+    Gère automatiquement l'heure d'été (UTC+2) et l'heure d'hiver (UTC+1).
+    Utilise la date ACTUELLE pour un décalage correct été/hiver.
+
+    :param hhmm: Heure au format HH:MM (UTC)
+    :return: Heure de Paris correspondante au format HH:MM
+    """
+    try:
+        from datetime import datetime, timezone
+        from zoneinfo import ZoneInfo
+
+        hour_str, minute_str = hhmm.strip().split(":")
+        paris_tz = ZoneInfo(LOCAL_TIMEZONE)
+        # Utilise la date du jour pour un calcul correct été/hiver.
+        now_utc = datetime.now(timezone.utc)
+        naive_utc = now_utc.replace(hour=int(hour_str), minute=int(minute_str), second=0, microsecond=0)
+        paris_dt = naive_utc.astimezone(paris_tz)
+        return paris_dt.strftime("%H:%M")
+    except (ValueError, TypeError, ImportError) as exc:
+        logger.warning(
+            "Impossible de convertir %s UTC → Paris (%s). Heure utilisée telle quelle.",
+            hhmm, exc,
+        )
+        return hhmm
 
 # ─────────────────────────────────────────────────────────────
 # Serveur web (Flask)
