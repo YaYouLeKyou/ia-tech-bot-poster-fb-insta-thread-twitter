@@ -293,6 +293,7 @@ def renew_tokens_job() -> None:
 # Planification avec `schedule`
 # ─────────────────────────────────────────────────────────────
 _schedule_lock = threading.Lock()
+_caught_up_times = set()
 
 
 def _clear_schedule() -> None:
@@ -389,6 +390,8 @@ def _catch_up_missed_posts(schedule_times: list) -> bool:
     # Vérifie chaque heure planifiée (ordonnée pour un rattrapage logique)
     for scheduled_time in sorted(schedule_times):
         # Si l'heure planifiée (Paris) est passée et qu'aucun post n'a été fait à cette heure
+        if scheduled_time in _caught_up_times:
+            continue
         if current_time >= scheduled_time and scheduled_time not in published_times_today:
             logger.info(
                 "Post planifié à %s (heure Paris) manqué (dernier post : %s) — rattrapage en cours",
@@ -398,6 +401,7 @@ def _catch_up_missed_posts(schedule_times: list) -> bool:
             try:
                 generate_news_job()
                 reschedule_global()
+                _caught_up_times.add(scheduled_time)
                 logger.info("Rattrapage terminé — un post manqué a été publié")
                 return True
             except Exception as exc:  # noqa: BLE001
