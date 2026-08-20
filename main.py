@@ -126,6 +126,12 @@ def publish_news_facebook(news: dict) -> bool:
 
         message = news.get("long_text") or _build_long_post_message(news)
         link = news.get("url", "")
+        logger.info(
+            "Tentative de publication Facebook : page_id=%s, message=%d caractères, link=%s",
+            config.FACEBOOK_PAGE_ID,
+            len(message),
+            link,
+        )
         published = facebook.post_to_page(message=message, link=link)
         if published:
             logger.info("✅ Post Facebook publié : %s", news["title"][:60])
