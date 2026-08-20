@@ -36,6 +36,11 @@ LLM_MODEL = os.getenv("LLM_MODEL", "gemini-3.5-flash-lite")
 # des tokens avant la réponse. 2000 garantit un tweet complet.
 LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "2000"))
 
+# Fallback Groq (si quota Gemini épuisé)
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_BASE_URL = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+
 # ─────────────────────────────────────────────────────────────
 # Fallback LLM — Groq (si Gemini est indisponible)
 # ─────────────────────────────────────────────────────────────
