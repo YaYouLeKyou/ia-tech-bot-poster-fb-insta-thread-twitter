@@ -136,21 +136,40 @@ def generate_breaking_news(force: bool = False) -> Optional[dict]:
             })
 
         if not proposals:
-            logger.error("Aucune proposition générée par l'IA.")
-            return None
+            logger.warning("Aucune proposition IA générée — basculement en mode sans IA")
+            if best_articles:
+                article = best_articles[0]
+                proposals.append({
+                    "title": article.title,
+                    "url": article.url,
+                    "source": article.source,
+                    "summary": article.summary,
+                    "breaking_text": article.title,
+                    "image": article.image,
+                })
+            else:
+                logger.error("Aucun article disponible pour le mode sans IA.")
+                return None
 
         # 4. Construction de l'objet news (principale + secondaires)
         now = datetime.now(timezone.utc).isoformat()
+        selected = proposals[0]
+        fallback_long_text = None
+        if not long_text:
+            fallback_long_text = "\n\n".join(
+                part for part in [selected.get("title", ""), selected.get("summary", ""), selected.get("url", "")] if part
+            ).strip() or None
+
         news = {
-            "title": french_title or proposals[0]["title"],
-            "url": proposals[0]["url"],
-            "source": proposals[0]["source"],
-            "summary": proposals[0]["summary"],
-            "breaking_text": proposals[0]["breaking_text"],
-            "long_text": long_text if 'long_text' in dir() else None,
+            "title": french_title or selected["title"],
+            "url": selected["url"],
+            "source": selected["source"],
+            "summary": selected["summary"],
+            "breaking_text": selected["breaking_text"],
+            "long_text": long_text or fallback_long_text,
             "published_at": now,
             "secondary_proposals": proposals[1:],
-            "image": proposals[0].get("image"),
+            "image": selected.get("image"),
         }
 
         # 5. Stockage en base
