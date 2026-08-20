@@ -407,7 +407,7 @@ def api_tweet_now():
                     progress[-1]["done"] = True
                     progress[-1]["success"] = facebook_published
                     if not facebook_published:
-                        facebook_error = "Échec de la publication Facebook — voir les logs serveur"
+                        facebook_error = facebook.last_error_message or "Échec de la publication Facebook"
                         progress[-1]["error"] = facebook_error
                 else:
                     facebook_error = (
