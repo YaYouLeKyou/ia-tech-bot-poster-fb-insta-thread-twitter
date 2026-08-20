@@ -105,6 +105,7 @@ class FacebookClient:
         self._token_type = "unknown"
         self.last_error_message = ""
         self._last_error_code = None
+        self._page_access_token = None
 
     def is_token_expired_error(self) -> bool:
         """
@@ -132,6 +133,50 @@ class FacebookClient:
                 self.last_error_message,
             )
 
+    def _get_page_access_token(self) -> Optional[str]:
+        """
+        Tente de récupérer un Page Access Token via /me/accounts.
+        Si FB_PAGE_ACCESS_TOKEN est déjà un page token valide, il est renvoyé tel quel.
+        Sinon, essaie d'échanger un user token contre un page token.
+        """
+        if not config.FB_PAGE_ACCESS_TOKEN or not config.FACEBOOK_PAGE_ID:
+            return None
+
+        # Si on a déjà un page token en cache, on le réutilise
+        if self._page_access_token:
+            return self._page_access_token
+
+        try:
+            url = f"{GRAPH_API_URL}/me/accounts"
+            params = {
+                "access_token": config.FB_PAGE_ACCESS_TOKEN,
+                "fields": "id,access_token,name",
+            }
+            response = requests.get(url, params=params, timeout=30)
+            data = response.json()
+
+            if response.status_code == 200 and "data" in data:
+                for page in data["data"]:
+                    if str(page.get("id")) == str(config.FACEBOOK_PAGE_ID):
+                        page_token = page.get("access_token")
+                        if page_token:
+                            self._page_access_token = page_token
+                            logger.info("Page Access Token récupéré avec succès pour la page %s", config.FACEBOOK_PAGE_ID)
+                            return page_token
+
+                logger.error("Page %s non trouvée dans les comptes accessibles par ce token", config.FACEBOOK_PAGE_ID)
+            else:
+                logger.error("Erreur lors de la récupération du page token : %s", data)
+
+        except requests.RequestException as exc:
+            logger.error("Erreur réseau lors de la récupération du page token : %s", exc)
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Erreur inattendue lors de la récupération du page token : %s", exc)
+
+        # Fallback : on utilise le token original
+        logger.warning("Utilisation du token original comme fallback")
+        return config.FB_PAGE_ACCESS_TOKEN
+
     def configure(self, verify_token: bool = True) -> bool:
         """
         Configure le client avec les paramètres de config.py.
@@ -155,6 +200,13 @@ class FacebookClient:
                 logger.error("Token Facebook invalide ou expiré")
                 self._is_configured = False
                 return False
+
+        page_token = self._get_page_access_token()
+        if page_token:
+            self._page_access_token = page_token
+            logger.info("Page Access Token configuré pour la page %s", config.FACEBOOK_PAGE_ID)
+        else:
+            logger.warning("Impossible de récupérer un Page Access Token, utilisation du token original")
 
         logger.info("Client Facebook configuré avec succès")
         return True
@@ -258,7 +310,7 @@ class FacebookClient:
         try:
             url = f"{GRAPH_API_URL}/{config.FACEBOOK_PAGE_ID}"
             params = {
-                "access_token": config.FB_PAGE_ACCESS_TOKEN,
+                "access_token": self._page_access_token or config.FB_PAGE_ACCESS_TOKEN,
                 "fields": "id,name,about,fan_count,link",
             }
             response = requests.get(url, params=params, timeout=30)
@@ -308,7 +360,7 @@ class FacebookClient:
 
         try:
             params = {
-                "access_token": config.FB_PAGE_ACCESS_TOKEN,
+                "access_token": self._page_access_token or config.FB_PAGE_ACCESS_TOKEN,
                 "message": message,
             }
             if link:
