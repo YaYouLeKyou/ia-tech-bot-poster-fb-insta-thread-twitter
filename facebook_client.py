@@ -347,6 +347,7 @@ class FacebookClient:
                 self._token_type if hasattr(self, "_token_type") else "inconnu",
             )
             logger.error("  → Réponse complète : %s", data)
+            logger.error("  → Paramètres envoyés : message=%d caractères, link=%s", len(message), link)
             return False
 
         except requests.RequestException as exc:
